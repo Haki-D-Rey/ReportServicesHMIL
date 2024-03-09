@@ -20,6 +20,5 @@ $app->add(function ($request, $handler) {
 // Cargar rutas
 $loadRoutes = require __DIR__ . '/../src/Helpers/loadRoutes.php';
 $loadRoutes($app);
-
 $app->run();
 

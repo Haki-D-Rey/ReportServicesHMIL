@@ -10,6 +10,11 @@ use PDOException;
 
 class ApiController
 {
+
+    public function index(){
+        phpinfo();
+    }
+
     public function getAll(Request $request, Response $response)
     {
         $sql = "SELECT aux_apenom, aux_apepat, aux_apemat, aux_nom, aux_dni, clie_codsap, clie_subv, clie_activo, clie_vip, aux_unid, aux_subdiv, aux_ccosto, aux_cat, aux_zona, user_id, aux_cargo, aux_ccosto_id, aux_sede_id FROM dmona.aux_clientes";
