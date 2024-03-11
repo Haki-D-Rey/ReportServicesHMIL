@@ -6,10 +6,15 @@ use \PDO;
 
 class DB
 {
-    private $host = '10.0.30.147';
-    private $user = 'postgres';
-    private $pass = 'Ar!$t0teles.2k24*.*';
-    private $dbname = 'siservi_catering_local';
+//     private $host = '10.0.30.147';
+//     private $user = 'postgres';
+//     private $pass = 'Ar!$t0teles.2k24*.*';
+//     private $dbname = 'siservi_catering_local';
+
+private $host = 'localhost';
+private $user = 'postgres';
+private $pass = '&ecurity23';
+private $dbname = 'siservi_catering_local';
 
     public function connect()
     {

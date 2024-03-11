@@ -24,14 +24,14 @@ class EmailController
         $requestData = $request->getParsedBody();
 
         // // Ejemplo de uso
-        $result = $this->configEmail(
-            $requestData['fromEmail'],
-            $requestData['fromName'],
-            $requestData['toEmail'],
-            $requestData['toName'],
-            $requestData['subject'],
-            $requestData['body']
-        );
+        // $result = $this->configEmail(
+        //     $requestData['fromEmail'],
+        //     $requestData['fromName'],
+        //     $requestData['toEmail'],
+        //     $requestData['toName'],
+        //     $requestData['subject'],
+        //     $requestData['body']
+        // );
 
           $result = $this->configEmail(
             'cesar.cuadra@hospitalmilitar.com.ni',

@@ -8,7 +8,7 @@ class FileController
 
     public function __construct()
     {
-        $this->storageDirectory = __DIR__ . '/storage/';
+        $this->storageDirectory = __DIR__ . '/../../storage/';
     }
 
     public function uploadFile()

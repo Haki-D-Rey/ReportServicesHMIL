@@ -1,6 +1,7 @@
 <?php
+namespace App\Helpers;
 
-// use DirectoryIterator;
+use DirectoryIterator;
 use Slim\App;
 
 return function (App $app) {
