@@ -93,9 +93,7 @@ class FileController
 
             // Close the file pointer
             fclose($output);
-
-
-
+            
             // Email configuration
             $mail = new PHPMailer(true);
 
