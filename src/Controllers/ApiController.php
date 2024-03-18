@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Models\DB;
+use App\services\ExcelSiserviReportService;
 use PDO;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
@@ -11,7 +12,6 @@ use Slim\Psr7\Stream;
 
 
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 
@@ -78,95 +78,100 @@ class ApiController
     public function getExcel(Request $request, Response $response)
     {
         try {
+
+            // Get the raw HTTP request body
+            // $body = file_get_contents('php://input');
+
+            // // For example, you can decode JSON if the request body is JSON
+            // $dataBody = json_decode($body, true);
+
+            // // Obtener los parámetros de fecha del cuerpo de la solicitud
+            // $fecha_inicio = $bodyParams['fecha_inicio'] ?? null;
+            // $fecha_fin = $bodyParams['fecha_fin'] ?? null;
+
+            // // Obtener el valor del parámetro tipo_busquedad
+            // $queryParams = $request->getQueryParams();
+            // $tipo_busquedad = $queryParams['tipo_busquedad'] ?? 1;
+
+            // Obtener la fecha actual y el nombre del mes en inglés
+            $month = date('F');
+            $year = date('Y');
+            // Traducir el nombre del mes al español
+            $months = [
+                'January' => 'Enero',
+                'February' => 'Febrero',
+                'March' => 'Marzo',
+                'April' => 'Abril',
+                'May' => 'Mayo',
+                'June' => 'Junio',
+                'July' => 'Julio',
+                'August' => 'Agosto',
+                'September' => 'Septiembre',
+                'October' => 'Octubre',
+                'November' => 'Noviembre',
+                'December' => 'Diciembre'
+            ];
+
+            // Obtener el nombre del mes en español
+            $current_month = $months[$month];
             // Crear una instancia de PhpSpreadsheet
             $spreadsheet = new Spreadsheet();
+            $excelServicesSiservi = new ExcelSiserviReportService();
 
-            // Establecer propiedades del documento
-            $spreadsheet->getProperties()->setCreator("Tu nombre")
-                ->setLastModifiedBy("Tu nombre")
-                ->setTitle("Reporte de ventas")
-                ->setSubject("Reporte de ventas")
-                ->setDescription("Este archivo contiene el reporte de ventas.")
-                ->setKeywords("ventas reporte excel")
-                ->setCategory("Reporte");
+            $excelServicesSiservi->setDocumentProperties($spreadsheet);
 
-            // Obtener la hoja activa
-            $sheet = $spreadsheet->getActiveSheet();
+            // Crear una nueva hoja de cálculo
+            $sheetSI = $spreadsheet->getActiveSheet();
+            $sheetSI->setTitle("REPORTE SISERVI - $current_month $year");
+            $excelServicesSiservi->setHeaders($sheetSI);
 
-            //Fusionar Celda Fecha
-            $sheet->mergeCells('B2:B3');
-            $sheet->setCellValue('B2', 'FECHA');
+            $data = $excelServicesSiservi->getData();
 
-            // Fusionar celdas para SEDE GENERAL
-            $sheet->mergeCells('C2:F2');
-            // Establecer valor para SEDE GENERAL
-            $sheet->setCellValue('C2', 'SEDE GENERAL');
-            $sheet->mergeCells('G2:G3');
-            $sheet->mergeCells('L2:L3');
-            // Fusionar celdas para SEDE OFICIALES
-            $sheet->mergeCells('H2:K2');
-            // Establecer valor para SEDE OFICIALES
-            $sheet->setCellValue('H2', 'SEDE OFICIALES');
-
-            // Establecer encabezados
-            $sheet->setCellValue('C3', 'ALMUERZO')
-                ->setCellValue('D3', 'CENA')
-                ->setCellValue('E3', 'DESAYUNO')
-                ->setCellValue('F3', 'REFRACCION')
-                ->setCellValue('G2', 'TOTAL GENERAL')
-                ->setCellValue('H3', 'ALMUERZO')
-                ->setCellValue('I3', 'CENA')
-                ->setCellValue('J3', 'DESAYUNO')
-                ->setCellValue('K3', 'REFRACCION')
-                ->setCellValue('L2', 'TOTAL OFICIALES')
-                ->setCellValue('M3', 'TOTAL');
-
-                $data = [
-                    [
-                        "sede_id" => "1",
-                        "serv_id" => "ALMUERZO",
-                        "fecha" => "2024-02-05",
-                        "total_por_servicio_y_sede" => "211.00"
-                    ],
-                    [
-                        "sede_id" => "1",
-                        "serv_id" => "CENA",
-                        "fecha" => "2024-02-05",
-                        "total_por_servicio_y_sede" => "30.00"
-                    ],
-                    [
-                        "sede_id" => "1",
-                        "serv_id" => "REFRACCION",
-                        "fecha" => "2024-02-05",
-                        "total_por_servicio_y_sede" => "3.00"
-                    ],
-                    [
-                        "sede_id" => "2",
-                        "serv_id" => "ALMUERZO",
-                        "fecha" => "2024-02-05",
-                        "total_por_servicio_y_sede" => "687.00"
-                    ],
-                    [
-                        "sede_id" => "2",
-                        "serv_id" => "CENA",
-                        "fecha" => "2024-02-05",
-                        "total_por_servicio_y_sede" => "207.00"
-                    ],
-                    [
-                        "sede_id" => "2",
-                        "serv_id" => "DESAYUNO",
-                        "fecha" => "2024-02-05",
-                        "total_por_servicio_y_sede" => "140.00"
-                    ],
-                    [
-                        "sede_id" => "2",
-                        "serv_id" => "REFRACCION",
-                        "fecha" => "2024-02-05",
-                        "total_por_servicio_y_sede" => "54.00"
+            // Definir el arreglo de mapeo de serv_id a letter_excel
+            $mapeoServicios = [
+                [
+                    "serv_id" => "ALMUERZO",
+                    "letter_excel" => [
+                        ["sede_id" => 1, "letter" => ["C"]],
+                        ["sede_id" => 2, "letter" => ["H"]]
                     ]
-                ];                
+                ],
+                [
+                    "serv_id" => "CENA",
+                    "letter_excel" => [
+                        ["sede_id" => 1, "letter" => ["D"]],
+                        ["sede_id" => 2, "letter" => ["I"]]
+                    ]
+                ],
+                [
+                    "serv_id" => "REFRACCION",
+                    "letter_excel" => [
+                        ["sede_id" => 1, "letter" => ["F"]],
+                        ["sede_id" => 2, "letter" => ["K"]]
+                    ]
+                ],
+                [
+                    "serv_id" => "DESAYUNO",
+                    "letter_excel" => [
+                        ["sede_id" => 1, "letter" => ["E"]],
+                        ["sede_id" => 2, "letter" => ["J"]]
+                    ]
+                ]
+                // Puedes agregar más elementos según sea necesario
+            ];
 
-            $columnas_encabezados = range('B', 'M');
+            $mapeoIndexado = $excelServicesSiservi->mapServices($mapeoServicios);
+
+            // Definir un arreglo con todos los serv_id esperados y sus respectivas sedes
+            $serviciosEsperados = [
+                "ALMUERZO" => ["1", "2"],
+                "CENA" => ["1", "2"],
+                "REFRACCION" => ["1", "2"],
+                "DESAYUNO" => ["1", "2"],
+            ];
+
+            $data = $excelServicesSiservi->restructureData($data, $serviciosEsperados, $mapeoIndexado);
+
             // Configurar el estilo de la tabla
             $styleArray = [
                 'font' => [
@@ -182,105 +187,41 @@ class ApiController
                 ],
             ];
 
-            $sheet->getStyle("B2:M2")->applyFromArray($styleArray);
-            $sheet->getStyle("B3:M3")->applyFromArray($styleArray);
+            $excelServicesSiservi->formData($data, $styleArray, 4, $sheetSI);
 
-            $sede_columnas = [
-                '1' => ['C', 'D', 'E', 'F'],
-                '2' => ['H', 'I', 'J', 'K']
+            // Crear una nueva hoja de cálculo
+            $newSheet = $spreadsheet->createSheet();
+            $newSheet->setTitle("REPORTE DIETA $current_month $year");
+
+            // Agregar datos a la nueva hoja de cálculo
+            $newSheet->setCellValue('A1', 'Valor 1');
+            $newSheet->setCellValue('B1', 'Valor 2');
+            $newSheet->setCellValue('C1', 'Valor 3');
+
+            // También puedes agregar datos iterando sobre un array
+            $data = [
+                ['Dato 1', 'Dato 2', 'Dato 3'],
+                ['Dato 4', 'Dato 5', 'Dato 6'],
+                // Agrega más filas de datos según sea necesario
             ];
 
-            $row = 4;
-            foreach ($data as $row_data) {
+            // Inicializar el contador de fila para los datos
+            $row = 2;
 
-                // Obtener el valor del dato actual
-                $valor = $row_data['total_por_servicio_y_sede'];
-
-                // Determinar las columnas según el valor de "sede_id"
-                $columnas = $sede_columnas[$row_data['sede_id']] ?? [];
-                foreach ($columnas_encabezados as $columna) {
-                    // Obtener el valor del dato actual
-                    $valor = $row_data['total_por_servicio_y_sede'];
-                    $fecha = $row_data['fecha'];
-
-                    // Condiciona la colocación de los datos según el valor de "sede_id"
-                    if ($row_data['sede_id'] === '1') {
-                        // Si es sede 1, coloca los datos en las columnas C a F
-                        switch ($columna) {
-                            case 'B':
-                                $sheet->setCellValue($columna . $row, $fecha);
-                                break;
-                            case 'C':
-                            case 'D':
-                            case 'E':
-                            case 'F':
-                                $sheet->setCellValue($columna . $row, $valor);
-                                break;
-                            default:
-                                // Para otras columnas, dejar vacío
-                                $sheet->setCellValue($columna . $row, '');
-                        }
-                    } elseif ($row_data['sede_id'] === '2') {
-                        // Si es sede 2, coloca los datos en las columnas H a K
-                        switch ($columna) {
-                            case 'B':
-                                $sheet->setCellValue($columna . $row, $fecha);
-                                break;
-                            case 'H':
-                            case 'I':
-                            case 'J':
-                            case 'K':
-                                $sheet->setCellValue($columna . $row, $valor);
-                                break;
-                            default:
-                                // Para otras columnas, dejar vacío
-                                $sheet->setCellValue($columna . $row, '');
-                        }
-                    }
-
-                    // Calcular totales
-                    if ($columna === 'G') {
-                        $sheet->setCellValue('G' . $row, "=SUM(C${row}:F${row})");
-                    }
-                    if ($columna === 'L') {
-                        $sheet->setCellValue('L' . $row, "=SUM(H${row}:K${row})");
-                    }
-                    $sheet->getStyle("B${row}:M${row}")->applyFromArray($styleArray);
+            // Iterar sobre los datos y agregarlos a la hoja de cálculo
+            foreach ($data as $rowData) {
+                $col = 'A';
+                foreach ($rowData as $value) {
+                    $newSheet->setCellValue($col . $row, $value);
+                    $col++;
                 }
-                $row++; // Avanzar a la siguiente fila
+                $row++;
             }
 
+            // Guardar el archivo excel en el servidor
+            $arrayFile = $excelServicesSiservi->saveFile($spreadsheet, "Reporte Servicios Alimentacios HMIL $year");
 
-            // Agregar datos de ejemplo
-            $row = 4; // Comenzar desde la fila 4
-            // foreach ($data as $row_data) {
-            //     foreach ($columnas_encabezados as $columna) {
-            //         $sheet->setCellValue($columna . $row, array_shift($row_data)); // Establecer el valor de la celda correspondiente
-            //         // Calcular totales
-            //         if ($columna === 'G') {
-            //             $sheet->setCellValue('G' . $row, "=SUM(C${row}:F${row})");
-            //         }
-            //         if ($columna === 'L') {
-            //             $sheet->setCellValue('L' . $row, "=SUM(H${row}:K${row})");
-            //         }
-            //         $sheet->getStyle("B${row}:M${row}")->applyFromArray($styleArray);
-            //     }
-            //     $row++; // Avanzar a la siguiente fila
-            // }
-
-            // Configurar anchos de columna
-            foreach (range('A', 'K') as $column) {
-                $sheet->getColumnDimension($column)->setAutoSize(true);
-            }
-
-            // Guardar el archivo
-            $writer = new Xlsx($spreadsheet);
-            $writer->save('ventas_reporte.xlsx');
-
-            // Guardar el archivo en el servidor
-            $filename = 'ventas_reporte.xlsx';
-            $writer = new Xlsx($spreadsheet);
-            $writer->save($filename);
+            $filename = $arrayFile["filename"];
 
             // Configurar la respuesta para descargar el archivo
             $fileSize = filesize($filename);
