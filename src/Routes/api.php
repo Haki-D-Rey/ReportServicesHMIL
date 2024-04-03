@@ -13,6 +13,7 @@ return function (App $app) {
     $app -> group('/api', function(RouteCollectorProxy $group){
         $group->get('/all', ApiController::class . ':getAll')->setName('api.all');
         $group->get('/excel', ApiController::class . ':getExcel')->setName('api.getExcel');
+        $group->get('/con', ApiController::class . ':getConnection')->setName('api.con');
     });
 
 };

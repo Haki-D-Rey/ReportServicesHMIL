@@ -7,8 +7,9 @@ use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
-class ExcelSiserviReportService
+class ExcelDietaReportService
 {
+
     public function setDocumentProperties(Spreadsheet $spreadsheet)
     {
         // Configurar propiedades del documento
@@ -29,42 +30,30 @@ class ExcelSiserviReportService
         $sheet->setCellValue('B2', 'FECHA');
 
         // Fusionar celdas para SEDE GENERAL
-        $sheet->mergeCells('C2:F2');
+        $sheet->mergeCells('C2:H2');
         // Establecer valor para SEDE GENERAL
-        $sheet->setCellValue('C2', 'SEDE GENERAL');
-        $sheet->mergeCells('G2:G3');
-        $sheet->mergeCells('L2:L3');
-        // Fusionar celdas para SEDE OFICIALES
-        $sheet->mergeCells('H2:K2');
-        // Establecer valor para SEDE OFICIALES
-        $sheet->setCellValue('H2', 'SEDE OFICIALES');
-
-        // Fusionar celdas para SEDE OFICIALES
-        $sheet->mergeCells('M2:M3');
-        // Establecer valor para SEDE OFICIALES
-        $sheet->setCellValue('M2', 'TOTAL');
+        $sheet->setCellValue('C2', 'REPORTE DIETA TODAS LAS AREAS DE SERVICIOS');
+        // Fusionar celdas para SEDE OFICIALES 
+        $sheet->mergeCells('I2:I3');
+        $sheet->setCellValue('I2', 'TOTAL');
 
         // Establecer encabezados
         $sheet->setCellValue('C3', 'ALMUERZO')
             ->setCellValue('D3', 'CENA')
             ->setCellValue('E3', 'DESAYUNO')
-            ->setCellValue('F3', 'REFRACCION')
-            ->setCellValue('G2', 'TOTAL GENERAL')
-            ->setCellValue('H3', 'ALMUERZO')
-            ->setCellValue('I3', 'CENA')
-            ->setCellValue('J3', 'DESAYUNO')
-            ->setCellValue('K3', 'REFRACCION')
-            ->setCellValue('L2', 'TOTAL OFICIALES');
+            ->setCellValue('F3', 'MERIENDA DE ALMUERZO')
+            ->setCellValue('G3', 'MERIENDA DE CENA')
+            ->setCellValue('H3', 'MERIENDA DE DESAYUNO');
         return $sheet;
     }
-
 
     public function getData(array $parametros): array
     {
         $Api = new ApiController();
-        $data = $Api->getSellSiServi($parametros);
+        $data = $Api -> getSellSiServi($parametros);
         return $data;
     }
+
 
     public function mapServices(array $mapeoServicios): array
     {
@@ -72,12 +61,13 @@ class ExcelSiserviReportService
         $mapeoIndexado = [];
         foreach ($mapeoServicios as $servicio) {
             foreach ($servicio["letter_excel"] as $letter) {
-                $mapeoIndexado[$servicio["serv_id"]][$letter["sede_id"]] = $letter["letter"];
+                $mapeoIndexado[$servicio["servicio"]][$letter["sede_id"]] = $letter["letter"];
             }
         }
 
         return $mapeoIndexado;
     }
+
 
     public function restructureData(array $data, array $serviciosEsperados, array $mapeoServicios): array
     {
@@ -86,7 +76,7 @@ class ExcelSiserviReportService
         foreach ($data as $item) {
             $fecha = $item["fecha"];
             $sede_id = $item["sede_id"];
-            $serv_id = $item["serv_id"];
+            $servicio = $item["servicio"];
 
             // Verificar si la fecha ya está en el arreglo reestructurado
             if (!isset($reestructurado[$fecha])) {
@@ -94,13 +84,13 @@ class ExcelSiserviReportService
             }
 
             // Verificar si el servicio esperado para esta sede está definido
-            if (isset($serviciosEsperados[$serv_id]) && in_array($sede_id, $serviciosEsperados[$serv_id])) {
+            if (isset($serviciosEsperados[$servicio]) && in_array($sede_id, $serviciosEsperados[$servicio])) {
                 // Si es así, agregar el item con letter_excel correspondiente si está definido
-                $letter_excel = isset($mapeoServicios[$serv_id][$sede_id]) ? $mapeoServicios[$serv_id][$sede_id] : "";
+                $letter_excel = isset($mapeoServicios[$servicio][$sede_id]) ? $mapeoServicios[$servicio][$sede_id] : "";
                 $reestructurado[$fecha][] = [
                     "sede_id" => $sede_id,
-                    "serv_id" => $serv_id,
-                    "total_por_servicio_y_sede" => $item["total_por_servicio_y_sede"],
+                    "servicio" => $servicio,
+                    "cantidad" => $item["cantidad"],
                     "letter_excel" => $letter_excel
                 ];
             }
@@ -113,22 +103,22 @@ class ExcelSiserviReportService
     public function resetValue(array $reestructurado, array $serviciosEsperados, array $mapeoServicios): array
     {
         // Añadir los servicios que no están presentes en $data pero se esperan
-        foreach ($serviciosEsperados as $serv_id => $sedes) {
+        foreach ($serviciosEsperados as $servicio => $sedes) {
             foreach ($sedes as $sede_id) {
                 foreach ($reestructurado as $fecha => $items) {
                     $encontrado = false;
                     foreach ($items as $item) {
-                        if ($item['sede_id'] === $sede_id && $item['serv_id'] === $serv_id) {
+                        if ($item['sede_id'] === $sede_id && $item['servicio'] === $servicio) {
                             $encontrado = true;
                             break;
                         }
                     }
                     if (!$encontrado) {
-                        $letter_excel = isset($mapeoServicios[$serv_id][$sede_id]) ? $mapeoServicios[$serv_id][$sede_id] : "";
+                        $letter_excel = isset($mapeoServicios[$servicio][$sede_id]) ? $mapeoServicios[$servicio][$sede_id] : "";
                         $reestructurado[$fecha][] = [
                             "sede_id" => $sede_id,
-                            "serv_id" => $serv_id,
-                            "total_por_servicio_y_sede" => "0.00", // Valor por defecto
+                            "servicio" => $servicio,
+                            "cantidad" => "0.00", // Valor por defecto
                             "letter_excel" => $letter_excel
                         ];
                     }
@@ -138,11 +128,12 @@ class ExcelSiserviReportService
         return $reestructurado;
     }
 
+
     public function formData(array $data, array $style, int $row, Worksheet $sheet): void
     {
 
-        $sheet->getStyle("B2:M2")->applyFromArray($style);
-        $sheet->getStyle("B3:M3")->applyFromArray($style);
+        $sheet->getStyle("B2:I2")->applyFromArray($style);
+        $sheet->getStyle("B3:I3")->applyFromArray($style);
 
         $row = 4;
         foreach ($data as $fecha => $datos) {
@@ -159,7 +150,7 @@ class ExcelSiserviReportService
             foreach ($datos_para_fecha as $dato) {
                 // Obtener los valores de los datos
                 $sede_id = $dato["sede_id"];
-                $valor = $dato["total_por_servicio_y_sede"];
+                $valor = $dato["cantidad"];
 
                 // Determinar las columnas según el valor de "sede_id"
                 $columna = $dato["letter_excel"][0] ?? [];
@@ -169,42 +160,34 @@ class ExcelSiserviReportService
                     case 'D':
                     case 'E':
                     case 'F':
-                        // Si es sede 1, coloca los datos en las columnas C a F
-                        if ($sede_id === '2') {
-                            $sheet->setCellValue($columna . $fila_interna, $valor);
-                        }
-                        break;
+                    case 'G':
                     case 'H':
-                    case 'I':
-                    case 'J':
-                    case 'K':
                         // Si es sede 2, coloca los datos en las columnas H a K
-                        if ($sede_id === '1') {
+                        if ($sede_id === '0') {
                             $sheet->setCellValue($columna . $fila_interna, $valor);
                         }
                         break;
                 }
             }
 
-            // Calcular totales para la fila actual
-            $sheet->setCellValue('G' . $row, "=SUM(C${row}:F${fila_interna})");
-            $sheet->setCellValue('L' . $row, "=SUM(H${row}:K${fila_interna})");
-
             // Calcular totales de las dos sedes
-            $sheet->setCellValue('M' . $row, "=G${row}+L${fila_interna}");
+            // $sheet->setCellValue('I' .$row, "=SUMA(C${row}:H${row})");
+            $sheet->setCellValue('I' . $row, "=(C${row}+D${row}+E${row}+F${row}+G${row}+H${row})");
 
             // Aplicar estilo a toda la fila
-            $sheet->getStyle("B${row}:M${fila_interna}")->applyFromArray($style);
+            $sheet->getStyle("B${row}:I${fila_interna}")->applyFromArray($style);
 
             // Avanzar a la siguiente fila
             $row = $fila_interna + 1;
         }
 
         // Configurar anchos de columna
-        foreach (range('B', 'M') as $column) {
+        foreach (range('B', 'I') as $column) {
             $sheet->getColumnDimension($column)->setAutoSize(true);
         }
     }
+
+
 
     public function saveFile(Spreadsheet $spreadsheet, string $reportName): array
     {

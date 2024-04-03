@@ -56,111 +56,88 @@ class FileController
     }
 
 
-    public function downloadExcel(Request $request, Response $response)
-    {
-        try {
-            // Database connection
-            $db = new DB();
-            $conn = $db->connect();
-            $query = $conn->query("SELECT aux_apenom AS id, aux_apepat AS first_name, aux_apemat AS email FROM dmona.aux_clientes");
-            $db = null;
-
-            // CSV file name for download
-            $fileName = "members-data_" . date('Y-m-d') . ".csv";
-
-            // Column names
-            $fields = array('ID', 'FIRST NAME', 'EMAIL');
-
-            // Output CSV headers
-            header("Content-Type: text/csv");
-            header("Content-Disposition: attachment; filename=\"$fileName\"");
-
-            // Create a file pointer connected to the output stream
-            $output = fopen('php://output', 'w');
-
-
-            // Create a temporary file to store the CSV data
-            $tempFile = tempnam(sys_get_temp_dir(), 'csv');
-            $output = fopen($tempFile, 'w');
-
-            // Output the column headings
-            fputcsv($output, $fields);
-
-            // Fetch records from the database
-            while ($row_data = $query->fetch(PDO::FETCH_ASSOC)) {
-                fputcsv($output, $row_data);
-            }
-
-            // Close the file pointer
-            fclose($output);
-            
-            // Email configuration
-            $mail = new PHPMailer(true);
-
-            // Enable SMTP debugging
-            $mail->isSMTP();
-            $mail->Host = 'mail.hospitalmilitar.com.ni';
-            $mail->SMTPAuth = true;
-            $mail->Username = 'luis.tapia@hospitalmilitar.com.ni';
-            $mail->Password = '8GTu*DP~!nXU';
-            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-            $mail->Port = 587;
-
-            // Sender and recipient
-            $mail->setFrom('cesar.cuadra@hospitalmilitar.com.ni', 'Your Name');
-            $mail->addAddress('maleisho@gmail.com', 'Recipient Name');
-
-            // Attach the CSV file
-            $mail->addAttachment($tempFile, $fileName);
-
-            // Email content
-            $mail->isHTML(true);
-            $mail->Subject = 'CSV File Attachment';
-            $mail->Body    = 'Please find the attached CSV file.';
-
-            // Send the email
-            $mail->send();
-
-            // Clean up the temporary file
-            unlink($tempFile);
-
-            // Your existing code for JSON response
-            $response->getBody()->write(json_encode(["status" => "success"]));
-            exit;
-
-            // $response->getBody()->write(json_encode(["hola" => "cesar"]));
-            // return $response
-            //     ->withHeader('content-type', 'application/json')
-            //     ->withStatus(200);
-        } catch (PDOException $e) {
-            $error = ["message" => $e->getMessage()];
-            $response->getBody()->write(json_encode($error));
-            return $response
-                ->withHeader('content-type', 'application/json')
-                ->withStatus(500);
-        }
-    }
-
-    // public function downloadExcel()
+    // public function downloadExcel(Request $request, Response $response)
     // {
-    //     // Datos de ejemplo (pueden provenir de una base de datos u otro origen)
-    //     $users = [
-    //         ['id' => 1, 'name' => 'John Doe', 'email' => 'john@example.com'],
-    //         ['id' => 2, 'name' => 'Jane Doe', 'email' => 'jane@example.com'],
-    //         // ... más datos
-    //     ];
+    //     try {
+    //         // Database connection
+    //         $db = new DB();
+    //         $conn = $db->connect();
+    //         $query = $conn->query("SELECT aux_apenom AS id, aux_apepat AS first_name, aux_apemat AS email FROM dmona.aux_clientes");
+    //         $db = null;
 
-    //     // Instanciar el servicio
-    //     $excelReportService = new ExcelReportService();
+    //         // CSV file name for download
+    //         $fileName = "members-data_" . date('Y-m-d') . ".csv";
 
-    //     // Generar el reporte
-    //     $filename = $excelReportService->generateUserReport($users);
+    //         // Column names
+    //         $fields = array('ID', 'FIRST NAME', 'EMAIL');
 
-    //     // Descargar el reporte generado
-    //     header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    //     header('Content-Disposition: attachment;filename="' . $filename . '"');
-    //     header('Cache-Control: max-age=0');
+    //         // Output CSV headers
+    //         header("Content-Type: text/csv");
+    //         header("Content-Disposition: attachment; filename=\"$fileName\"");
 
-    //     readfile($filename);
+    //         // Create a file pointer connected to the output stream
+    //         $output = fopen('php://output', 'w');
+
+
+    //         // Create a temporary file to store the CSV data
+    //         $tempFile = tempnam(sys_get_temp_dir(), 'csv');
+    //         $output = fopen($tempFile, 'w');
+
+    //         // Output the column headings
+    //         fputcsv($output, $fields);
+
+    //         // Fetch records from the database
+    //         while ($row_data = $query->fetch(PDO::FETCH_ASSOC)) {
+    //             fputcsv($output, $row_data);
+    //         }
+
+    //         // Close the file pointer
+    //         fclose($output);
+            
+    //         // Email configuration
+    //         $mail = new PHPMailer(true);
+
+    //         // Enable SMTP debugging
+    //         $mail->isSMTP();
+    //         $mail->Host = 'mail.hospitalmilitar.com.ni';
+    //         $mail->SMTPAuth = true;
+    //         $mail->Username = 'luis.tapia@hospitalmilitar.com.ni';
+    //         $mail->Password = '8GTu*DP~!nXU';
+    //         $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+    //         $mail->Port = 587;
+
+    //         // Sender and recipient
+    //         $mail->setFrom('cesar.cuadra@hospitalmilitar.com.ni', 'Your Name');
+    //         $mail->addAddress('maleisho@gmail.com', 'Recipient Name');
+
+    //         // Attach the CSV file
+    //         $mail->addAttachment($tempFile, $fileName);
+
+    //         // Email content
+    //         $mail->isHTML(true);
+    //         $mail->Subject = 'CSV File Attachment';
+    //         $mail->Body    = 'Please find the attached CSV file.';
+
+    //         // Send the email
+    //         $mail->send();
+
+    //         // Clean up the temporary file
+    //         unlink($tempFile);
+
+    //         // Your existing code for JSON response
+    //         $response->getBody()->write(json_encode(["status" => "success"]));
+    //         exit;
+
+    //         // $response->getBody()->write(json_encode(["hola" => "cesar"]));
+    //         // return $response
+    //         //     ->withHeader('content-type', 'application/json')
+    //         //     ->withStatus(200);
+    //     } catch (PDOException $e) {
+    //         $error = ["message" => $e->getMessage()];
+    //         $response->getBody()->write(json_encode($error));
+    //         return $response
+    //             ->withHeader('content-type', 'application/json')
+    //             ->withStatus(500);
+    //     }
     // }
 }
