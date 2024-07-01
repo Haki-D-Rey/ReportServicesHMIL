@@ -35,10 +35,18 @@ class ApiController
             'pass' => 'PA$$W0RD',
             'dbname' => 'Dieta'
         ],
+        'Prueba-VDHMIL' => [
+            'driver' => 'sqlsrv',
+            'host' => 'Prueba-VDHMIL',
+            'user' => 'sa',
+            'pass' => '&ecurity23',
+            'dbname' => 'Prueba-VDHMIL'
+        ],
     ];
 
     public function index()
     {
+        $this->getConnection();
         phpinfo();
     }
 
@@ -47,13 +55,13 @@ class ApiController
         $multiDB = new DB($this->databases);
 
         try {
-            $db1Connection = $multiDB->getConnection('db1');
-            $db2Connection = $multiDB->getConnection('db2');
+            $db1Connection = $multiDB->getConnection('SISERVI');
+            $db3Connection = $multiDB->getConnection('Prueba-VDHMIL');
 
-            // Ahora puedes usar $db1Connection, $db2Connection y $db3Connection para interactuar con las bases de datos respectivas.
+                // Ahora puedes usar $db1Connection, $db2Connection y $db3Connection para interactuar con las bases de datos respectivas.
 
-            // Acceder a las conexiones almacenadas en la propiedad protegida
-            var_dump($multiDB->connections);
+                // Acceder a las conexiones almacenadas en la propiedad protegida
+                var_dump($multiDB->connections);
         } catch (\Exception $e) {
             echo 'Error: ' . $e->getMessage();
         }
