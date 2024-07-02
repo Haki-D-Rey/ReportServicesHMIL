@@ -35,13 +35,13 @@ class ApiController
             'pass' => 'PA$$W0RD',
             'dbname' => 'Dieta'
         ],
-        'Prueba-VDHMIL' => [
-            'driver' => 'sqlsrv',
-            'host' => 'Prueba-VDHMIL',
-            'user' => 'sa',
-            'pass' => '&ecurity23',
-            'dbname' => 'Prueba-VDHMIL'
-        ],
+        // 'Prueba-VDHMIL' => [
+        //     'driver' => 'sqlsrv',
+        //     'host' => 'Prueba-VDHMIL',
+        //     'user' => 'sa',
+        //     'pass' => '&ecurity23',
+        //     'dbname' => 'Prueba-VDHMIL'
+        // ],
     ];
 
     public function index()
