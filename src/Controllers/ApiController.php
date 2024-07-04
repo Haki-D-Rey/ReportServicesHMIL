@@ -25,7 +25,7 @@ class ApiController
             'driver' => 'pgsql',
             'host' => '10.0.30.147',
             'user' => 'postgres',
-            'pass' => 'Ar!$t0teles.2k24*.*',
+            'pass' => '&ecurity23',
             'dbname' => 'siservi_catering_local'
         ],
         'DIETA' => [
@@ -55,13 +55,8 @@ class ApiController
         $multiDB = new DB($this->databases);
 
         try {
-            $db1Connection = $multiDB->getConnection('SISERVI');
-            $db3Connection = $multiDB->getConnection('Prueba-VDHMIL');
-
-                // Ahora puedes usar $db1Connection, $db2Connection y $db3Connection para interactuar con las bases de datos respectivas.
-
-                // Acceder a las conexiones almacenadas en la propiedad protegida
-                var_dump($multiDB->connections);
+                
+            var_dump($multiDB->connections);
         } catch (\Exception $e) {
             echo 'Error: ' . $e->getMessage();
         }
