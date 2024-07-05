@@ -19,12 +19,12 @@ class EmailController
     private $subject = 'Reporte Diario de Servicios de Alimentacion';
     private $body = 'Hola buenos días, se hace cumplimiento de reporte Diario de servicios de alimentacion verificado por la aplicacion SISERVI Comedores y Servicios de Dieta';
     private $mailConfig = [
-        'Host' => 'mail.hospitalmilitar.com.ni',
+        'Host' => 'smtp.elasticemail.com',
         'SMTPAuth' => true,
-        'Username' => 'cesar.cuadra@hospitalmilitar.com.ni',
-        'Password' => 'czsVyDoHUq1m',
-        'SMTPSecure' => PHPMailer::ENCRYPTION_STARTTLS,
-        'Port' => 587
+        'Username' => 'congresomedico@hospitalmilitar.com.ni',
+        'Password' => 'EBA390CDCBA62E1C515AE3C09A918E4C9477',
+        'SMTPSecure' => 'ssl',  // Cambiado a SSL según la documentación de Elastic Email
+        'Port' => 465  // Puerto específico de Elastic Email
     ];
 
 
