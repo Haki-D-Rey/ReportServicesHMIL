@@ -21,8 +21,8 @@ class EmailController
     private $mailConfig = [
         'Host' => 'smtp.elasticemail.com',
         'SMTPAuth' => true,
-        'Username' => 'congresomedico@hospitalmilitar.com.ni',
-        'Password' => 'EBA390CDCBA62E1C515AE3C09A918E4C9477',
+        'Username' => 'gti@hospitalmilitar.com.ni',
+        'Password' => '8DA58248225E3D6BD9D5B688400D2AC7B18F',
         'SMTPSecure' => 'ssl',  // Cambiado a SSL según la documentación de Elastic Email
         'Port' => 465  // Puerto específico de Elastic Email
     ];
