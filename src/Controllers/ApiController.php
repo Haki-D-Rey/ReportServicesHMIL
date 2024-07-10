@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Models\DB;
 use App\services\ExcelDietaReportService;
+use App\services\ExcelReportEventsService;
 use App\services\ExcelSiserviReportService;
 use PDO;
 use Psr\Http\Message\ResponseInterface as Response;
@@ -35,6 +36,13 @@ class ApiController
             'pass' => 'PA$$W0RD',
             'dbname' => 'Dieta'
         ],
+        'EVENTOS' => [
+            'driver' => 'mysql',
+            'host' => 'c98055.sgvps.net',
+            'user' => 'udeq5kxktab81',
+            'pass' => 'clmjsfgcrt5m',
+            'dbname' => 'db2gdg4nfxpgyk'
+        ],
         // 'Prueba-VDHMIL' => [
         //     'driver' => 'sqlsrv',
         //     'host' => 'Prueba-VDHMIL',
@@ -55,7 +63,7 @@ class ApiController
         $multiDB = new DB($this->databases);
 
         try {
-                
+
             var_dump($multiDB->connections);
         } catch (\Exception $e) {
             echo 'Error: ' . $e->getMessage();
@@ -131,7 +139,7 @@ class ApiController
     }
 
 
-    public function getExcel(Request $request, Response $response)
+    public function getExcelReporteServiciosAlimentacion(Request $request, Response $response)
     {
         try {
 
@@ -376,6 +384,119 @@ class ApiController
     }
 
 
+    public function getExcelReportInscripcionesEvent(Request $request, Response $response)
+    {
+        try {
+
+            //Get the raw HTTP request body
+            $body = file_get_contents('php://input');
+
+            // For example, you can decode JSON if the request body is JSON
+            $dataBody = json_decode($body, true);
+
+            // Obtener la fecha actual
+            $hoy = date('Y-m-d');
+
+            // Obtener los parámetros de fecha del cuerpo de la solicitud
+            $fecha = isset($dataBody['fecha']) && !empty($dataBody['fecha']) ? $dataBody['fecha'] : date('Y-m-d', strtotime($hoy . '0 day'));
+            // Obtener parametros de correo
+            $parametrosCorreo = [
+                'fromEmail' => $dataBody['fromEmail'] ?? null,
+                'fromName' => $dataBody['fromName'] ?? null,
+                'destinatary' => $dataBody['destinatary'] ?? null,
+                'subject' => $dataBody['subject'] ?? null,
+                'body' => $dataBody['body'] ?? null
+            ];
+
+            // Obtener el valor del parámetro tipo_busquedad
+            $queryParams = $request->getQueryParams();
+            $tipo_busquedad = $queryParams['tipo_busquedad'] ?? 1;
+
+            // Obtener la fecha actual y el nombre del mes en inglés
+            $month = date('F');
+            $year = date('Y');
+            // Traducir el nombre del mes al español
+            $months = [
+                'January' => 'Enero',
+                'February' => 'Febrero',
+                'March' => 'Marzo',
+                'April' => 'Abril',
+                'May' => 'Mayo',
+                'June' => 'Junio',
+                'July' => 'Julio',
+                'August' => 'Agosto',
+                'September' => 'Septiembre',
+                'October' => 'Octubre',
+                'November' => 'Noviembre',
+                'December' => 'Diciembre'
+            ];
+
+            $arryaParams = [
+                "fecha" => $fecha,
+                "tipo_busquedad" => $tipo_busquedad
+            ];
+
+            $current_month = $months[$month];
+            // Crear una instancia de PhpSpreadsheet
+            $spreadsheet = new Spreadsheet();
+            $excelServicesRepoertEvents = new ExcelReportEventsService();
+
+            // Crear una nueva hoja de cálculo
+            $sheetReportEvents = $spreadsheet->getActiveSheet();
+            $sheetReportEvents->setTitle("REPORTE $current_month $year");
+
+            $excelServicesRepoertEvents->setDocumentProperties($spreadsheet);
+
+            $excelServicesRepoertEvents->setHeaders($sheetReportEvents);
+
+            $data = $excelServicesRepoertEvents->getData($arryaParams);
+
+            $excelServicesRepoertEvents->formData($data, $sheetReportEvents, 4);
+
+            $arrayFile = $excelServicesRepoertEvents->saveFile($spreadsheet, "Reporte Inscripciones Eventos - $current_month $year");
+
+            $filename = $arrayFile["filename"];
+            $mailer = new EmailController();
+
+            // Configurar el correo electrónico
+            $this->mailServer = $mailer->sendEmail($parametrosCorreo);
+            // Adjuntar el archivo Excel
+            $this->mailServer->addAttachment($filename, basename($filename));
+            // Enviar el correo electrónico
+            $this->mailServer->send();
+
+            // Configurar la respuesta para descargar el archivo
+            $fileSize = filesize($filename);
+
+            $response = $response->withHeader('Content-Description', 'File Transfer')
+                ->withHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+                ->withHeader('Content-Disposition', 'attachment;filename="' . basename($filename) . '"')
+                ->withHeader('Expires', '0')
+                ->withHeader('Cache-Control', 'must-revalidate')
+                ->withHeader('Pragma', 'public')
+                ->withHeader('Content-Length', $fileSize);
+
+            // Leer el archivo y enviarlo como respuesta
+            $file = fopen($filename, 'rb');
+            $stream = new Stream($file);
+            $response = $response->withBody($stream);
+
+            // Eliminar el archivo después de enviarlo
+            unlink($filename);
+
+            return $response;
+        } catch (PDOException $e) {
+            $error = ["message" => $e->getMessage()];
+            $response->getBody()->write(json_encode($error));
+            return $response
+                ->withHeader('content-type', 'application/json')
+                ->withStatus(500);
+        }
+    }
+
+
+
+
     public function getSellSiServi(array $arrayParams): array
     {
         $tipo_busquedad = $arrayParams['tipo_busquedad'];
@@ -457,6 +578,52 @@ class ApiController
             return $error;
         }
     }
+
+
+    public function getPlanInscripcionEvents(array $arrayParams): array
+    {
+        $tipo_busquedad = $arrayParams['tipo_busquedad'];
+        $fecha = date("Y-m-d", strtotime($arrayParams['fecha']));
+
+        try {
+            $db = new DB($this->databases);
+            $connD = $db->getConnection('EVENTOS');
+
+            $query = 'SELECT
+                :fecha AS fecha,
+                tpins.descripcion as plan,
+                count(1) as cantidad
+            FROM
+                wp_eiparticipante tb
+                INNER JOIN wp_tipo_planes_inscripcion tpins 
+            ON tb.id_tipo_planes_inscripcion = tpins.id
+            WHERE
+                tb.estaInscrito = 1 
+                AND tb.evento IN (
+                    "XXI PRECONGRESO CIENTÍFICO MÉDICO",
+                    "XXI CONGRESO CIENTÍFICO MÉDICO",
+                    "XXI PRECONGRESO y CONGRESO CIENTÍFICO MÉDICO"
+                ) 
+                AND tb.id_participante >= 1030
+                AND DATE(tb.fecha) <= :fecha
+            GROUP BY
+                tb.id_tipo_planes_inscripcion;';
+
+            $stmt = $connD->prepare($query);
+            $stmt->bindParam(':fecha', $fecha);
+            $stmt->execute();
+            $reportEvents = $stmt->fetchAll(PDO::FETCH_OBJ);
+            $db = null;
+
+            return $reportEvents;
+        } catch (PDOException $e) {
+            error_log($e->getMessage());  // Log the error message
+            $error = ["message" => $e->getMessage()];
+            return $error;
+        }
+    }
+
+
 
     public function restructuredArray($array): array
     {
