@@ -461,8 +461,8 @@ class ApiController
             $sheetReportEventsInstitutions->setTitle("REPORTE INSTITUCIONES");
 
             $excelServicesRepoertEvents->setHeadersInstitutions($sheetReportEventsInstitutions);
-            
-            $excelServicesRepoertEvents->formDataInstituciones($datos_instituciones,$sheetReportEventsInstitutions,4);
+
+            $excelServicesRepoertEvents->formDataInstituciones($datos_instituciones, $sheetReportEventsInstitutions, 4);
 
             $arrayFile = $excelServicesRepoertEvents->saveFile($spreadsheet, "Reporte Inscripciones Eventos - $current_month $year");
 
@@ -673,6 +673,30 @@ class ApiController
             return $reportEventsInstitutions;
         } catch (PDOException $e) {
             error_log($e->getMessage());  // Log the error message
+            $error = ["message" => $e->getMessage()];
+            return $error;
+        }
+    }
+
+    public function getNameInstitutionOficial($id)
+    {
+        try {
+            $db = new DB($this->databases); // Suponiendo que DB es tu clase para manejar la conexión a la base de datos
+            $connD = $db->getConnection('EVENTOS'); // Suponiendo que 'EVENTOS' es el nombre de tu conexión
+
+            $query = 'SELECT descripcion FROM wp_tipo_institucion_oficial WHERE estado = 1 AND id = :id';
+
+            $stmt = $connD->prepare($query);
+            $stmt->bindParam(':id', $id, PDO::PARAM_INT); // Asumiendo que $id es un entero, usar PDO::PARAM_INT para evitar inyecciones SQL
+            $stmt->execute();
+            $reportEventsInstitutions = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+            // Cerramos la conexión
+            $db = null;
+
+            return $reportEventsInstitutions[0]->descripcion;
+        } catch (PDOException $e) {
+            error_log($e->getMessage());  // Registrar el mensaje de error en el log
             $error = ["message" => $e->getMessage()];
             return $error;
         }

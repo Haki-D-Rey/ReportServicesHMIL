@@ -209,7 +209,20 @@ class ExcelReportEventsService
 
     public function validateStructuredInstitutionsData(array $datosInstitutions): array
     {
+        $Api = new ApiController();
         $resultados = [];
+        $validarInstituciones = [
+            '/\bSERMESA\b/i',
+            '/\bHCRH\b/i',
+            '/\bHOSPITAL CARLOS ROBERTOS\b/i',
+            '/\bMINSA\b/i',
+            '/\bINSS\b/i',
+            '/\bHOSPITAL SALUD INTEGRAL\b/i',
+            '/\bHOSPITAL VIVIAN PELLAS\b/i',
+            '/\bHOSPITAL SERMESA\b/i',
+            '/\bUAM\b/i',
+            '/\bFACMED\b/i',
+        ];
 
         // Recorremos el arreglo original
         foreach ($datosInstitutions as $item) {
@@ -221,17 +234,28 @@ class ExcelReportEventsService
             // Verificamos si el nombre de la institución contiene "HOSPITAL MILITAR"
             if (strpos($nombreInstitucion, 'HOSPITAL MILITAR') !== false) {
                 $nombreInstitucion = 'HOSPITAL MILITAR ESCUELA "DR. ALEJANDRO DAVÍLA BOLAÑOS"';
+            } else {
+                $encontrado = false;
+                foreach ($validarInstituciones as $regex) {
+                    if (preg_match($regex, $nombreInstitucion)) {
+                        $encontrado = true;
+                        break;
+                    }
+                }
+                if (!$encontrado && $idTipoInstitucion == 6) {
+                    $nombreInstitucion = 'USUARIOS PARTICULARES';
+                }
             }
 
             // Creamos una clave única para identificar el grupo por id_tipo_institucion_oficial, nombre_institucion y id_tipo_planes_inscripcion
             $clave = $idTipoInstitucion . '_' . $nombreInstitucion . '_' . $idTipoPlanesInscripcion;
 
-
             // Si la clave aún no existe en el arreglo de resultados, la inicializamos
             if (!isset($resultados[$clave])) {
+                $remakeInstitutionName = $idTipoInstitucion === 6 ? $nombreInstitucion : $Api->getNameInstitutionOficial($idTipoInstitucion);
                 $resultados[$clave] = (object) [
                     "id_tipo_institucion_oficial" => $idTipoInstitucion,
-                    "nombre_institucion" => $nombreInstitucion,
+                    "nombre_institucion" => $remakeInstitutionName,
                     "id_tipo_planes_inscripcion" => $idTipoPlanesInscripcion,
                     "plan" => $plan,
                     "total_cantidad" => 0 // Inicializamos la cantidad total en cero
@@ -244,6 +268,17 @@ class ExcelReportEventsService
 
         $resultados = array_values($resultados);
 
+        // Creamos un arreglo auxiliar para almacenar los nombres de institución y sus respectivos índices
+        $nombreIndex = [];
+        foreach ($resultados as $index => $item) {
+            $nombreInstitucion = $item->nombre_institucion;
+            $nombreIndex[$index] = $nombreInstitucion;
+        }
+
+        // Ordenamos los índices basándonos en los nombres de institución
+        array_multisort($nombreIndex, SORT_ASC, $resultados);
+
         return $resultados;
     }
+
 }
