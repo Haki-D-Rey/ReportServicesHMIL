@@ -451,7 +451,18 @@ class ApiController
 
             $data = $excelServicesRepoertEvents->getData($arryaParams);
 
-            $excelServicesRepoertEvents->formData($data, $sheetReportEvents, 4);
+            $datos = $data["Datos"];
+            $datos_instituciones = $data["Datos_Instituciones"];
+            $excelServicesRepoertEvents->formData($datos, $sheetReportEvents, 4);
+
+
+            // Crear una nueva hoja de cálculo
+            $sheetReportEventsInstitutions = $spreadsheet->createSheet();
+            $sheetReportEventsInstitutions->setTitle("REPORTE INSTITUCIONES");
+
+            $excelServicesRepoertEvents->setHeadersInstitutions($sheetReportEventsInstitutions);
+            
+            $excelServicesRepoertEvents->formDataInstituciones($datos_instituciones,$sheetReportEventsInstitutions,4);
 
             $arrayFile = $excelServicesRepoertEvents->saveFile($spreadsheet, "Reporte Inscripciones Eventos - $current_month $year");
 
@@ -623,7 +634,49 @@ class ApiController
         }
     }
 
+    public function getPlanInscripcionEventsInstitutions(array $arrayParams): array
+    {
+        $fecha = date("Y-m-d", strtotime($arrayParams['fecha']));
 
+        try {
+            $db = new DB($this->databases);
+            $connD = $db->getConnection('EVENTOS');
+
+            $query = 'SELECT
+            tb.id_tipo_institucion_oficial,
+            tb.nombre_institucion,
+            tb.id_tipo_planes_inscripcion,
+            tpins.descripcion as plan,
+            count(1) as cantidad
+        FROM
+            wp_eiparticipante tb
+            INNER JOIN wp_tipo_planes_inscripcion tpins 
+        ON tb.id_tipo_planes_inscripcion = tpins.id
+        WHERE
+            tb.estaInscrito = 1 
+            AND tb.evento IN (
+                "XXI PRECONGRESO CIENTÍFICO MÉDICO",
+                "XXI CONGRESO CIENTÍFICO MÉDICO",
+                "XXI PRECONGRESO y CONGRESO CIENTÍFICO MÉDICO"
+            ) 
+            AND tb.id_participante >= 1030
+            AND DATE(tb.fecha) <= :fecha
+        GROUP BY
+            tb.id_tipo_planes_inscripcion, tb.nombre_institucion;';
+
+            $stmt = $connD->prepare($query);
+            $stmt->bindParam(':fecha', $fecha);
+            $stmt->execute();
+            $reportEventsInstitutions = $stmt->fetchAll(PDO::FETCH_OBJ);
+            $db = null;
+
+            return $reportEventsInstitutions;
+        } catch (PDOException $e) {
+            error_log($e->getMessage());  // Log the error message
+            $error = ["message" => $e->getMessage()];
+            return $error;
+        }
+    }
 
     public function restructuredArray($array): array
     {
