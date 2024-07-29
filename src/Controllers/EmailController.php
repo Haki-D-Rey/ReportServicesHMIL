@@ -16,8 +16,8 @@ class EmailController
             "email" => "gti@hospitalmilitar.com.ni"
         ],
     ];
-    private $subject = 'Reporte Diario de Servicios de Alimentacion';
-    private $body = 'Hola buenos días, se hace cumplimiento de reporte Diario de servicios de alimentacion verificado por la aplicacion SISERVI Comedores y Servicios de Dieta';
+    private $subject = '';
+    private $body = '';
     private $mailConfig = [
         'Host' => 'smtp.elasticemail.com',
         'SMTPAuth' => true,
