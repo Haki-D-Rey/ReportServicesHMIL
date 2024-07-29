@@ -404,8 +404,8 @@ class ApiController
                 'fromEmail' => $dataBody['fromEmail'] ?? null,
                 'fromName' => $dataBody['fromName'] ?? null,
                 'destinatary' => $dataBody['destinatary'] ?? null,
-                'subject' => $dataBody['subject'] ?? null,
-                'body' => $dataBody['body'] ?? null
+                'subject' => $dataBody['subject'] ?? "Reporte Diario de Personas Inscritas XXI Congreso y Precongreso Cientifíco Médico",
+                'body' => $dataBody['body'] ?? "Se detalla La cantidad de personas inscritas para el evento XXI Congreso y Precongreso Cientifíco Médico, para llevar un control del conteo diario con corte a las 15hrs. Muchas Gracias"
             ];
 
             // Obtener el valor del parámetro tipo_busquedad
