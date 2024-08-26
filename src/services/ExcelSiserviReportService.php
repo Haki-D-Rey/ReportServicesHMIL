@@ -45,15 +45,15 @@ class ExcelSiserviReportService
         $sheet->setCellValue('M2', 'TOTAL');
 
         // Establecer encabezados
-        $sheet->setCellValue('C3', 'ALMUERZO')
-            ->setCellValue('D3', 'CENA')
-            ->setCellValue('E3', 'DESAYUNO')
-            ->setCellValue('F3', 'REFRACCION')
+        $sheet->setCellValue('C3', 'DESAYUNO')
+            ->setCellValue('D3', 'ALMUERZO')
+            ->setCellValue('E3', 'CENA')
+            ->setCellValue('F3', 'REFACCION')
             ->setCellValue('G2', 'TOTAL GENERAL')
-            ->setCellValue('H3', 'ALMUERZO')
-            ->setCellValue('I3', 'CENA')
-            ->setCellValue('J3', 'DESAYUNO')
-            ->setCellValue('K3', 'REFRACCION')
+            ->setCellValue('H3', 'DESAYUNO')
+            ->setCellValue('I3', 'ALMUERZO')
+            ->setCellValue('J3', 'CENA')
+            ->setCellValue('K3', 'REFACCION')
             ->setCellValue('L2', 'TOTAL OFICIALES');
         return $sheet;
     }

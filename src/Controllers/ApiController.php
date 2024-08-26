@@ -215,15 +215,15 @@ class ApiController
                 [
                     "serv_id" => "ALMUERZO",
                     "letter_excel" => [
-                        ["sede_id" => 1, "letter" => ["H"]],
-                        ["sede_id" => 2, "letter" => ["C"]]
+                        ["sede_id" => 1, "letter" => ["I"]],
+                        ["sede_id" => 2, "letter" => ["D"]]
                     ]
                 ],
                 [
                     "serv_id" => "CENA",
                     "letter_excel" => [
-                        ["sede_id" => 1, "letter" => ["I"]],
-                        ["sede_id" => 2, "letter" => ["D"]]
+                        ["sede_id" => 1, "letter" => ["J"]],
+                        ["sede_id" => 2, "letter" => ["E"]]
                     ]
                 ],
                 [
@@ -236,8 +236,8 @@ class ApiController
                 [
                     "serv_id" => "DESAYUNO",
                     "letter_excel" => [
-                        ["sede_id" => 1, "letter" => ["J"]],
-                        ["sede_id" => 2, "letter" => ["E"]]
+                        ["sede_id" => 1, "letter" => ["H"]],
+                        ["sede_id" => 2, "letter" => ["C"]]
                     ]
                 ]
                 // Puedes agregar más elementos según sea necesario
@@ -288,37 +288,37 @@ class ApiController
                 [
                     "servicio" => "ALMUERZO",
                     "letter_excel" => [
-                        ["sede_id" => 0, "letter" => ["C"]],
+                        ["sede_id" => 0, "letter" => ["D"]],
                     ]
                 ],
                 [
                     "servicio" => "CENA",
                     "letter_excel" => [
-                        ["sede_id" => 0, "letter" => ["D"]],
+                        ["sede_id" => 0, "letter" => ["E"]],
                     ]
                 ],
                 [
                     "servicio" => "DESAYUNO",
                     "letter_excel" => [
-                        ["sede_id" => 0, "letter" => ["E"]],
+                        ["sede_id" => 0, "letter" => ["C"]],
                     ]
                 ],
                 [
                     "servicio" => "MERIENDA PARA ALMUERZO",
                     "letter_excel" => [
-                        ["sede_id" => 0, "letter" => ["F"]],
+                        ["sede_id" => 0, "letter" => ["G"]],
                     ]
                 ],
                 [
                     "servicio" => "MERIENDA PARA CENA",
                     "letter_excel" => [
-                        ["sede_id" => 0, "letter" => ["G"]],
+                        ["sede_id" => 0, "letter" => ["H"]],
                     ]
                 ],
                 [
                     "servicio" => "MERIENDA PARA DESAYUNO",
                     "letter_excel" => [
-                        ["sede_id" => 0, "letter" => ["H"]],
+                        ["sede_id" => 0, "letter" => ["F"]],
                     ]
                 ],
                 // Puedes agregar más elementos según sea necesario
@@ -615,7 +615,7 @@ class ApiController
                     "XXI CONGRESO CIENTÍFICO MÉDICO",
                     "XXI PRECONGRESO y CONGRESO CIENTÍFICO MÉDICO"
                 ) 
-                AND tb.id_participante >= 1030
+                AND tb.id_participante >= 1030 AND tb.id_participante <= 2018
                 AND DATE(tb.fecha) <= :fecha
             GROUP BY
                 tb.id_tipo_planes_inscripcion;';
@@ -659,7 +659,7 @@ class ApiController
                 "XXI CONGRESO CIENTÍFICO MÉDICO",
                 "XXI PRECONGRESO y CONGRESO CIENTÍFICO MÉDICO"
             ) 
-            AND tb.id_participante >= 1030
+            AND tb.id_participante >= 1030 AND tb.id_participante <= 2018
             AND DATE(tb.fecha) <= :fecha
         GROUP BY
             tb.id_tipo_planes_inscripcion, tb.nombre_institucion;';

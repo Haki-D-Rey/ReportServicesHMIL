@@ -38,12 +38,12 @@ class ExcelDietaReportService
         $sheet->setCellValue('I2', 'TOTAL');
 
         // Establecer encabezados
-        $sheet->setCellValue('C3', 'ALMUERZO')
-            ->setCellValue('D3', 'CENA')
-            ->setCellValue('E3', 'DESAYUNO')
-            ->setCellValue('F3', 'MERIENDA DE ALMUERZO')
-            ->setCellValue('G3', 'MERIENDA DE CENA')
-            ->setCellValue('H3', 'MERIENDA DE DESAYUNO');
+        $sheet->setCellValue('C3', 'DESAYUNO')
+            ->setCellValue('D3', 'ALMUERZO')
+            ->setCellValue('E3', 'CENA')
+            ->setCellValue('F3', 'MERIENDA DE DESAYUNO')
+            ->setCellValue('G3', 'MERIENDA DE ALMUERZO')
+            ->setCellValue('H3', 'MERIENDA DE CENA');
         return $sheet;
     }
 
