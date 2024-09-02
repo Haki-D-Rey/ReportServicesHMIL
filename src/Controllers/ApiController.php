@@ -205,7 +205,7 @@ class ApiController
 
             // Crear una nueva hoja de cálculo
             $sheetSI = $spreadsheet->getActiveSheet();
-            $sheetSI->setTitle("REPORTE SISERVI - $current_month $year");
+            $sheetSI->setTitle("SISERVI - $current_month $year");
             $excelServicesSiservi->setHeaders($sheetSI);
 
             $data = $this->getSellSiServi($arryaParams);
@@ -275,7 +275,7 @@ class ApiController
 
             // Crear una nueva hoja de cálculo
             $sheetDieta = $spreadsheet->createSheet();
-            $sheetDieta->setTitle("REPORTE DIETA $current_month $year");
+            $sheetDieta->setTitle("DIETA $current_month $year");
 
             $excelServicesDieta->setDocumentProperties($spreadsheet);
 
