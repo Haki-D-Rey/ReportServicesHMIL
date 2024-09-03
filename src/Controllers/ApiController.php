@@ -506,8 +506,6 @@ class ApiController
     }
 
 
-
-
     public function getSellSiServi(array $arrayParams): array
     {
         $tipo_busquedad = $arrayParams['tipo_busquedad'];
@@ -521,7 +519,7 @@ class ApiController
                 DATE(v.vc_emision_feho) AS fecha,
                 SUM(v.vc_total) AS total_del_dia
         FROM dmona.ventas_cab v
-        WHERE " . ($tipo_busquedad == 1 ? "DATE(v.vc_emision_feho) >= '$fecha_inicio' AND DATE(v.vc_emision_feho) <= '$fecha_fin'" : "DATE(v.vc_emision_feho) = '$fecha_inicio'") . "
+        WHERE v.vc_anulado <> 1 AND " . ($tipo_busquedad == 1 ? "DATE(v.vc_emision_feho) >= '$fecha_inicio' AND DATE(v.vc_emision_feho) <= '$fecha_fin'" : "DATE(v.vc_emision_feho) = '$fecha_inicio'") . "
         GROUP BY v.sede_id, v.serv_id, DATE(v.vc_emision_feho)";
 
         $sql =
