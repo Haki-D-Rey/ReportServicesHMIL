@@ -35,20 +35,37 @@ class DB
 
     private function connect($driver, $host, $user, $pass, $dbname)
     {
-        $opciones = array();
-        if ($driver === 'pgsql') {
-            $dsn = "pgsql:host=$host;dbname=$dbname";
-        } elseif ($driver === 'mysql') {
-            $dsn = "mysql:host=$host;dbname=$dbname";
-        } elseif ($driver === 'sqlsrv') {
-            // Aquí cambiamos 'host' por 'Server' para SQL Server
-            $dsn = "dblib:host=$host;dbname=$dbname;charset=UTF-8;";
-        } else {
-            throw new \InvalidArgumentException("Driver '$driver' no es soportado.");
+        try {
+            // Determinar el DSN basado en el driver
+            switch ($driver) {
+                case 'pgsql':
+                    $dsn = "pgsql:host=$host;dbname=$dbname";
+                    break;
+                case 'mysql':
+                    $dsn = "mysql:host=$host;dbname=$dbname";
+                    break;
+                case 'sqlsrv':
+                    $dsn = "dblib:host=$host;dbname=$dbname;charset=UTF-8;";
+                    break;
+                default:
+                    throw new \InvalidArgumentException("Driver '$driver' no es soportado.");
+            }
+
+            // Intentar crear la conexión
+            $conn = new PDO($dsn, $user, $pass);
+            $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+            return $conn;
+        } catch (\PDOException $e) {
+            // Manejo específico de errores de PDO
+            throw new \RuntimeException("Error al conectar a la base de datos: " . $e->getMessage(), (int)$e->getCode(), $e);
+        } catch (\InvalidArgumentException $e) {
+            // Manejo de errores para argumentos inválidos
+            throw $e; // Re-throw the exception to be handled elsewhere
+        } catch (\Exception $e) {
+            // Manejo de errores generales
+            throw new \RuntimeException("Ocurrió un error inesperado: " . $e->getMessage(), (int)$e->getCode(), $e);
         }
-        $conn = new PDO($dsn, $user, $pass);
-        $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        return $conn;
     }
 
     public function getConnection($name)
