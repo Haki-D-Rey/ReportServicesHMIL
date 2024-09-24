@@ -562,7 +562,7 @@ class ApiController
                     CONVERT(VARCHAR, p.fecha, 120) AS fecha,
                     t.nombre as servicio,
                     CASE 
-                        WHEN as2.idAreaServicio IN (10,11,12,21,46)  THEN 'Hospitalización Privada'
+                        WHEN as2.idAreaServicio IN (12,21,46)  THEN 'Hospitalización Privada'
                         ELSE 'Hospitalización General'
                     END AS tipo_servicio,
                     '0' AS sede_id,
@@ -580,7 +580,7 @@ class ApiController
                 CONVERT(VARCHAR, p.fecha, 120),
                 t.nombre,
                 CASE 
-                    WHEN as2.idAreaServicio IN (10,11,12,21,46)  THEN 'Hospitalización Privada'
+                    WHEN as2.idAreaServicio IN (12,21,46)  THEN 'Hospitalización Privada'
                     ELSE 'Hospitalización General'
                 END
             ORDER BY 
