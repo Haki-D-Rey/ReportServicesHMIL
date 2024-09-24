@@ -286,39 +286,39 @@ class ApiController
             // Definir el arreglo de mapeo de serv_id a letter_excel
             $mapeoServicios = [
                 [
-                    "servicio" => "ALMUERZO",
+                    "servicio" => "DESAYUNO",
                     "letter_excel" => [
                         ["sede_id" => 0, "letter" => ["D"]],
                     ]
                 ],
                 [
+                    "servicio" => "ALMUERZO",
+                    "letter_excel" => [
+                        ["sede_id" => 0, "", "letter" => ["E"]],
+                    ]
+                ],
+                [
                     "servicio" => "CENA",
                     "letter_excel" => [
-                        ["sede_id" => 0, "letter" => ["E"]],
-                    ]
-                ],
-                [
-                    "servicio" => "DESAYUNO",
-                    "letter_excel" => [
-                        ["sede_id" => 0, "letter" => ["C"]],
-                    ]
-                ],
-                [
-                    "servicio" => "MERIENDA PARA ALMUERZO",
-                    "letter_excel" => [
-                        ["sede_id" => 0, "letter" => ["G"]],
-                    ]
-                ],
-                [
-                    "servicio" => "MERIENDA PARA CENA",
-                    "letter_excel" => [
-                        ["sede_id" => 0, "letter" => ["H"]],
+                        ["sede_id" => 0, "letter" => ["F"]],
                     ]
                 ],
                 [
                     "servicio" => "MERIENDA PARA DESAYUNO",
                     "letter_excel" => [
-                        ["sede_id" => 0, "letter" => ["F"]],
+                        ["sede_id" => 0, "letter" => ["G"]],
+                    ]
+                ],
+                [
+                    "servicio" => "MERIENDA PARA ALMUERZO",
+                    "letter_excel" => [
+                        ["sede_id" => 0, "letter" => ["H"]],
+                    ]
+                ],
+                [
+                    "servicio" => "MERIENDA PARA CENA",
+                    "letter_excel" => [
+                        ["sede_id" => 0, "letter" => ["I"]],
                     ]
                 ],
                 // Puedes agregar más elementos según sea necesario
@@ -560,7 +560,11 @@ class ApiController
             $sql =
                 "SELECT 
                     CONVERT(VARCHAR, p.fecha, 120) AS fecha,
-                    t.nombre  AS servicio,
+                    t.nombre as servicio,
+                    CASE 
+                        WHEN as2.idAreaServicio IN (16, 42) THEN 'Hospitalización Privada'
+                        ELSE 'Hospitalización General'
+                    END AS tipo_servicio,
                     '0' AS sede_id,
                     COUNT(1) AS cantidad
             FROM 
@@ -573,9 +577,15 @@ class ApiController
                 Tiempos t ON o.idTiempo = t.idTiempo
             WHERE " . ($tipo_busquedad == 1 ?  "p.fecha BETWEEN CONVERT(DATE, '$fecha_inicio', 103) AND CONVERT(DATE, '$fecha_fin', 103)" : "p.fecha = CONVERT(DATE, '$fecha_fin', 103)") . "
             GROUP BY 
-                CONVERT(DATE, p.fecha, 103),
-                t.nombre
-            ORDER BY p.fecha ASC;";
+                CONVERT(VARCHAR, p.fecha, 120),
+                t.nombre,
+                CASE 
+                    WHEN as2.idAreaServicio IN (16, 42) THEN 'Hospitalización Privada'
+                    ELSE 'Hospitalización General'
+                END
+            ORDER BY 
+                CONVERT(VARCHAR, p.fecha, 120) DESC,
+                t.nombre ASC;";
 
             $stmt2 = $connD->query($sql);
             $dietaReport = $stmt2->fetchAll(PDO::FETCH_OBJ);
