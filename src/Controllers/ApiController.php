@@ -11,7 +11,8 @@ use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use PDOException;
 use Slim\Psr7\Stream;
-
+use App\Helpers\Utils;
+use Exception;
 use PHPMailer\PHPMailer\PHPMailer;
 
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -43,13 +44,36 @@ class ApiController
             'pass' => 'clmjsfgcrt5m',
             'dbname' => 'db2gdg4nfxpgyk'
         ],
-        // 'Prueba-VDHMIL' => [
-        //     'driver' => 'sqlsrv',
-        //     'host' => 'Prueba-VDHMIL',
-        //     'user' => 'sa',
-        //     'pass' => '&ecurity23',
-        //     'dbname' => 'Prueba-VDHMIL'
-        // ],
+        'RRHH_DEV' => [
+            'driver' => 'sqlsrv',
+            'host' => 'RRHH_DEV',
+            'port' => '1433',
+            'user' => 'sa',
+            'pass' => '2r>6C8A>tKcq',
+            'dbname' => 'RRHH_DEV'
+        ],
+        'IVSM_DEV' => [
+            'driver' => 'mysql',
+            'host' => '10.0.30.185',
+            'user' => 'developer',
+            'pass' => 'T41g<l6rnF7J',
+            'dbname' => 'IVSM_DEV'
+        ],
+        'IVSM_PROD' => [
+            'driver' => 'mysql',
+            'host' => '10.0.30.146',
+            'port' => '3308',
+            'user' => 'developer',
+            'pass' => 'T41g<l6rnF7J',
+            'dbname' => 'ivsm'
+        ],
+        'RRHH_PROD' => [
+            'driver' => 'sqlsrv',
+            'host' => 'RRHH',
+            'user' => 'sa',
+            'pass' => 'P@$$W0RD',
+            'dbname' => 'Dieta'
+        ],
     ];
 
     public function index()
@@ -505,6 +529,147 @@ class ApiController
         }
     }
 
+    public function getBigDataInsertMarks(Request $request, Response $response)
+    {
+        // Parámetros de paginación (page y pageSize desde la query)
+        $page = (int) $request->getQueryParams()['page'] ?? 1;
+        $pageSize = (int) $request->getQueryParams()['pageSize'] ?? 10;
+
+        $DatosMarcas = $this->getMarksClockHivision('', '');
+
+        $Template = [
+            "DeviceSerial" => "DeviceSerial",
+            "DeviceName" => "DeviceName",
+            "Data" => [
+                "PersonID" => "PersonID",
+                "AuthDateTime" => "AuthDateTime",
+                "AuthDate" => "AuthDate",
+                "Authtime" => "Authtime",
+                "Direction" => "Direction"
+            ]
+        ];
+
+        $utils = new Utils();
+        $mutatedArray = $utils->transformArray($DatosMarcas, $Template, true, 'DeviceSerial');
+
+        foreach ($mutatedArray as &$itemData) {
+            $item = $this->filterDataByDirection1($itemData['Data'], ['DS-K1T8003EF20210407V010330ENF77487337']);
+            $itemData['Data'] = $item;
+        }
+        unset($itemData);
+
+        $db = new DB($this->databases);
+        $connD = $db->getConnection('RRHH_PROD');
+
+        $sqlCheck = "SELECT COUNT(*) 
+             FROM [dbo].[MAESTRO DE MARCAS] 
+             WHERE ID_EMPLEADO = :ID_EMPLEADO 
+             AND HORA_MARCA = :HORA_MARCA 
+             AND TIPO_MARCA = :TIPO_MARCA
+             AND IDRELOJ = :IDRELOJ";
+
+        $stmtCheck = $connD->prepare($sqlCheck);
+
+        $sqlInsert = "INSERT INTO RRHH.dbo.[MAESTRO DE MARCAS] 
+            (IDEMPRESA, IDRELOJ, ID_EMPLEADO, HORA_MARCA, FECHA_MARCA, FECHA_CARGA, ARCHIVO, NUMERO, PROGRAMADO, OBSERVACION, TIPO_MARCA) 
+            VALUES 
+            (:IDEMPRESA, :IDRELOJ, :ID_EMPLEADO, :HORA_MARCA, :FECHA_MARCA, :FECHA_CARGA, '.', '.', 0, '.', :TIPO_MARCA)";
+
+        $stmtInsert = $connD->prepare($sqlInsert);
+
+        foreach ($mutatedArray as $deviceData) {
+            $batchSize = 100000;
+            $totalRecords = count($deviceData['Data']);
+            $batches = array_chunk($deviceData['Data'], $batchSize); // Dividir los datos en lotes
+            $DeviceSerial = $deviceData['DeviceSerial'];
+            $idReloj = $this->getRelojIdBySerial($DeviceSerial);
+
+            foreach ($batches as $batch) {
+                try {
+                    // Iniciar una transacción
+                    $connD->beginTransaction();
+
+                    foreach ($batch as $registro) {
+                        $CodigoEmpleado = '00000' . $registro['PersonID'];
+
+                        // Validación de existencia del registro
+                        $stmtCheck->execute([
+                            ':ID_EMPLEADO' => $CodigoEmpleado,
+                            ':HORA_MARCA'  => $registro['AuthDateTime'],
+                            ':TIPO_MARCA'  => $registro['Direction'],
+                            ':IDRELOJ'  => $idReloj
+
+                        ]);
+
+                        // Si el registro no existe, se inserta
+                        if ($stmtCheck->fetchColumn() == 0) {
+                        $stmtInsert->execute([
+                            ':IDEMPRESA'    => 1,
+                            ':IDRELOJ'      => $idReloj,
+                            ':ID_EMPLEADO'  => $CodigoEmpleado,
+                            ':HORA_MARCA'   => $registro['AuthDateTime'],
+                            ':FECHA_MARCA'  => $registro['AuthDate'],
+                            ':FECHA_CARGA'  => date('Y-m-d H:i:s'),
+                            ':TIPO_MARCA'   => $registro['Direction']
+                        ]);
+                        }
+                    }
+
+                    // Confirmar la transacción
+                    $connD->commit();
+                    echo "Lote insertado con éxito.\n";
+                } catch (Exception $e) {
+                    // Si hay error, revertir la transacción
+                    $connD->rollBack();
+                    echo "Error al insertar el lote: " . $e->getMessage() . "\n";
+                }
+            }
+        }
+
+
+
+        try {
+            $json_final = [];
+
+            // Iterar sobre los dispositivos
+            foreach ($mutatedArray as $deviceData) {
+                // Datos completos en "Data"
+                $totalData = $deviceData['Data'];
+                $totalItems = count($totalData);
+
+                // Cálculo de paginación
+                $offset = ($page - 1) * $pageSize;
+                $paginatedData = array_slice($totalData, $offset, $pageSize);
+
+                // Asignar datos paginados al dispositivo
+                $deviceCopy = $deviceData;
+                $deviceCopy['Data'] = $paginatedData;
+
+                // Añadir información de paginación
+                $deviceCopy['pagination'] = [
+                    'page' => $page,
+                    'pageSize' => $pageSize,
+                    'totalItems' => $totalItems,
+                    'totalPages' => ceil($totalItems / $pageSize)
+                ];
+
+                // Añadir el dispositivo con los datos paginados al resultado final
+                $json_final[] = $deviceCopy;
+            }
+
+            // Serializar el resultado final como JSON
+            $response->getBody()->write(json_encode($json_final));
+            return $response
+                ->withHeader('content-type', 'application/json')
+                ->withStatus(200);
+        } catch (PDOException $e) {
+            $error = ["message" => $e->getMessage()];
+            $response->getBody()->write(json_encode($error));
+            return $response
+                ->withHeader('content-type', 'application/json')
+                ->withStatus(500);
+        }
+    }
 
     public function getSellSiServi(array $arrayParams): array
     {
@@ -710,6 +875,99 @@ class ApiController
         }
     }
 
+    public function getRelojIdBySerial($deviceSerial): ?int
+    {
+        try {
+            $db = new DB($this->databases);
+            $connD = $db->getConnection('RRHH_DEV');
+
+            // Prepara la consulta para obtener el ID del reloj
+            $query = "SELECT IDRELOJ FROM [dbo].[CAT DE RELOJ] WHERE DeviceSerial = :deviceSerial";
+            $stmt = $connD->prepare($query);
+            $stmt->execute([':deviceSerial' => $deviceSerial]);
+
+            $result = $stmt->fetch(PDO::FETCH_OBJ);
+
+            // Cerramos la conexión
+            $db = null;
+
+            // Retorna el IDRELOJ si se encuentra, de lo contrario, retorna null
+            return $result ? $result->IDRELOJ : null;
+        } catch (PDOException $e) {
+            error_log($e->getMessage());
+            return null;
+        }
+    }
+
+    public function getHorarios(): array
+    {
+        try {
+            $db = new DB($this->databases); // Suponiendo que DB es tu clase para manejar la conexión a la base de datos
+            $connD = $db->getConnection('RRHH_DEV'); // Suponiendo que 'EVENTOS' es el nombre de tu conexión
+            $query = 'SELECT 
+                            ID_T_HORARIO AS ID,
+                            DESCRIPCION,
+                            CHRT,
+                            C_DIAS_T,
+                            C_DIAS_L,
+                            CONVERT(VARCHAR(32), [HORA_E], 108) AS HoraEntrada,
+                            CONVERT(VARCHAR(32), [HORA_S], 108) AS HoraSalida 
+                      FROM dbo.[CAT DE TIPO DE HORARIO]';
+            // $query = 'SELECT descripcion FROM wp_tipo_institucion_oficial WHERE estado = 1 AND id = :id';
+
+            $stmt = $connD->prepare($query);
+            $stmt->execute();
+            $horarios = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+            // Cerramos la conexión
+            $db = null;
+
+            return $horarios;
+        } catch (PDOException $e) {
+            error_log($e->getMessage());  // Registrar el mensaje de error en el log
+            $error = ["message" => $e->getMessage()];
+            return $error;
+        }
+    }
+
+    public function getMarksClockHivision($fecha_inicio, $fecha_fin): array
+    {
+        try {
+            $db = new DB($this->databases); // Suponiendo que DB es tu clase para manejar la conexión a la base de datos
+            $connD = $db->getConnection('IVSM_PROD'); // Suponiendo que 'IVSM_PROD' es el nombre de tu conexión
+
+            // Obtener las fechas de ayer y hoy
+            $fecha_inicio = $fecha_inicio ? $fecha_inicio : date('Y-m-d', strtotime('-1 day')); // Formato de la fecha para la consulta
+            $fecha_fin = $fecha_fin ? $fecha_fin : date('Y-m-d'); // Fecha de ayer
+
+            // Consulta SQL modificada para incluir el filtrado por AuthDate
+            $query = 'SELECT *
+                      FROM attlog a 
+                      WHERE a.Direction IN ("ENTRADA", "SALIDA")
+                        -- AND a.AuthDate BETWEEN :ayer AND :hoy
+                      ORDER BY DeviceSerial ASC, a.AuthDate DESC, Authtime ASC';
+
+            $stmt = $connD->prepare($query);
+
+            // Bindear las fechas como parámetros
+            $stmt->bindValue(':ayer', $fecha_inicio);
+            $stmt->bindValue(':hoy', $fecha_fin);
+
+            $stmt->execute();
+            $horarios = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+            // Cerramos la conexión
+            $db = null;
+
+            return $horarios;
+        } catch (PDOException $e) {
+            error_log($e->getMessage());  // Registrar el mensaje de error en el log
+            $error = ["message" => $e->getMessage()];
+            return $error;
+        }
+    }
+
+
     public function restructuredArray($array): array
     {
         foreach ($array as $objeto) {
@@ -717,5 +975,131 @@ class ApiController
             $arreglo_arreglos[] = $arreglo;
         }
         return $arreglo_arreglos;
+    }
+
+    private static function filterDataByDirection1(array $data, array $deviceSerials): array
+    {
+        // Agruparemos los datos por PersonID y AuthDate
+        $groupedData = [];
+
+        foreach ($data as $item) {
+            $personID = $item['PersonID'];
+            $authDate = $item['AuthDate'];
+            $direction = $item['Direction'];
+
+            // Solo agrupar datos válidos
+            if ($direction === 'ENTRADA' || $direction === 'SALIDA') {
+                // Inicializamos un grupo si no existe
+                if (!isset($groupedData[$personID][$authDate])) {
+                    $groupedData[$personID][$authDate] = [
+                        'ENTRADA' => [],
+                        'SALIDA' => [],
+                    ];
+                }
+
+                // Añadimos el item al grupo correspondiente
+                $groupedData[$personID][$authDate][$direction][] = $item;
+
+                // Para el caso específico de 'ENTRADA', limitamos a 2 entradas
+                if ($direction === 'ENTRADA') {
+                    // Si hay más de 2 entradas, mantenemos solo la primera y la última
+                    if (count($groupedData[$personID][$authDate]['ENTRADA']) > 2) {
+                        usort($groupedData[$personID][$authDate]['ENTRADA'], function ($a, $b) {
+                            return strcmp($a['Authtime'], $b['Authtime']);
+                        });
+
+                        // Guardar la primera y la última
+                        $firstEntry = $groupedData[$personID][$authDate]['ENTRADA'][0];
+                        $lastEntry = end($groupedData[$personID][$authDate]['ENTRADA']);
+
+                        // Reemplazamos el array de entradas por solo la primera y última
+                        $groupedData[$personID][$authDate]['ENTRADA'] = [$firstEntry, $lastEntry];
+                    }
+                }
+            }
+        }
+
+        $filteredData = [];
+        $previousEntry = null;
+        foreach ($groupedData as $personID => $dates) {
+            foreach ($dates as $authDate => $directions) {
+                if (isset($directions['ENTRADA']) && count($directions['ENTRADA']) <> 0) {
+
+                    usort($directions['ENTRADA'], function ($a, $b) {
+                        return strcmp($a['Authtime'], $b['Authtime']);
+                    });
+
+                    if (count($directions['ENTRADA']) > 1 && count($directions['SALIDA']) > 1) {
+                        $filteredData[] = $directions['ENTRADA'][0];
+                    } elseif (count($directions['ENTRADA']) > 1 && count($directions['SALIDA']) === 0) {
+
+                        $filteredData[] = $directions['ENTRADA'][0];
+
+                        $firstEntryTime = strtotime($directions['ENTRADA'][0]['Authtime']);
+                        $secondEntryTime = strtotime($directions['ENTRADA'][1]['Authtime']);
+
+                        $timeDifference = $secondEntryTime - $firstEntryTime;
+
+                        if ($timeDifference > 18000) {
+                            $directions['ENTRADA'][1]['Direction'] = 'SALIDA';
+                            $filteredData[] = $directions['ENTRADA'][1];
+                        }
+                    } else {
+                        $filteredData[] = $directions['ENTRADA'][0];
+                    }
+
+                    if ($previousEntry !== null) {
+                        $currentEntryTime = strtotime($directions['ENTRADA'][0]['Authtime']);
+                        $previousEntryTime = strtotime($previousEntry['Authtime']);
+
+
+                        $timeDifference = ($currentEntryTime - $previousEntryTime) / 3600;
+
+                        if ($timeDifference >= 10) {
+                            $previousEntry['Direction'] = 'SALIDA';
+                            $filteredData[] = $previousEntry;
+                        }
+                    }
+
+                    $previousEntry = end($directions['ENTRADA']);
+                }
+
+                // Filtrar las salidas
+                if (isset($directions['SALIDA']) && count($directions['SALIDA']) <> 0) {
+                    usort($directions['SALIDA'], function ($a, $b) {
+                        return strcmp($b['Authtime'], $a['Authtime']);
+                    });
+
+                    $filteredData[] = $directions['SALIDA'][0];
+                }
+            }
+        }
+        return array_filter($filteredData, function ($item) {
+            return !empty($item['Direction']) && ($item['Direction'] === 'ENTRADA' || $item['Direction'] === 'SALIDA');
+        });
+    }
+
+    private static function filterDataByCriteria(array $devices, string $deviceSerial, string $direction, string $personID): array
+    {
+        $filteredDevices = [];
+
+        foreach ($devices as $device) {
+            // Verificar si el DeviceSerial coincide
+            if ($device['DeviceSerial'] === $deviceSerial) {
+                // Filtrar los datos internos por Direction y PersonID
+                $filteredData = array_filter($device['Data'], function ($item) use ($direction, $personID) {
+                    return $item['Direction'] === $direction && $item['PersonID'] == $personID;
+                });
+
+                // Si hay datos que coinciden con los criterios, agregar al resultado
+                if (!empty($filteredData)) {
+                    // Asignar los datos filtrados al nuevo array
+                    $device['Data'] = array_values($filteredData); // Reindexar
+                    $filteredDevices[] = $device; // Agregar el dispositivo con los datos filtrados
+                }
+            }
+        }
+
+        return $filteredDevices;
     }
 }

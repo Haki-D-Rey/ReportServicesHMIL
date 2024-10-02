@@ -20,5 +20,6 @@ $app->add(function ($request, $handler) {
 // Cargar rutas
 $loadRoutes = require __DIR__ . '/../src/Helpers/loadRoutes.php';
 $loadRoutes($app);
+date_default_timezone_set('America/Guatemala');
 $app->run();
 
