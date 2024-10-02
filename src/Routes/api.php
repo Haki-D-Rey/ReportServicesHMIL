@@ -16,6 +16,7 @@ return function (App $app) {
         $group->get('/reporte-eventos', ApiController::class . ':getExcelReportInscripcionesEvent')->setName('api.reportEvents');
         $group->get('/data-eventos', ApiController::class . ':getPlanInscripcionEvents')->setName('api.dataEventos');
         $group->get('/con', ApiController::class . ':getConnection')->setName('api.con');
+        $group->post('/insertquery-marks', ApiController::class . ':getBigDataInsertMarks')->setName('api.insertquery_marks');
     });
 
 };

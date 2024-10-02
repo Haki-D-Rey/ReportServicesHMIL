@@ -26,6 +26,7 @@ class DB
             $this->connections[$name] = $this->connect(
                 $config['driver'],
                 $config['host'],
+                $config['port'],
                 $config['user'],
                 $config['pass'],
                 $config['dbname']
@@ -33,7 +34,7 @@ class DB
         }
     }
 
-    private function connect($driver, $host, $user, $pass, $dbname)
+    private function connect($driver, $host, $port ,$user, $pass, $dbname)
     {
         try {
             // Determinar el DSN basado en el driver
@@ -42,7 +43,7 @@ class DB
                     $dsn = "pgsql:host=$host;dbname=$dbname";
                     break;
                 case 'mysql':
-                    $dsn = "mysql:host=$host;dbname=$dbname";
+                    $dsn = "mysql:host=$host;port=$port;dbname=$dbname";
                     break;
                 case 'sqlsrv':
                     $dsn = "dblib:host=$host;dbname=$dbname;charset=UTF-8;";
