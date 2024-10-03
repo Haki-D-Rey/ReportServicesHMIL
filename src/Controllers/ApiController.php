@@ -879,10 +879,10 @@ class ApiController
     {
         try {
             $db = new DB($this->databases);
-            $connD = $db->getConnection('RRHH_DEV');
+            $connD = $db->getConnection('RRHH_PROD');
 
             // Prepara la consulta para obtener el ID del reloj
-            $query = "SELECT IDRELOJ FROM [dbo].[CAT DE RELOJ] WHERE DeviceSerial = :deviceSerial";
+            $query = "SELECT IDRELOJ FROM RRHH.[dbo].[CAT DE RELOJ] WHERE DeviceSerial = :deviceSerial";
             $stmt = $connD->prepare($query);
             $stmt->execute([':deviceSerial' => $deviceSerial]);
 
