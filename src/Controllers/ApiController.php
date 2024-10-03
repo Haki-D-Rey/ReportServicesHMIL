@@ -944,7 +944,7 @@ class ApiController
             $query = 'SELECT *
                       FROM attlog a 
                       WHERE a.Direction IN ("ENTRADA", "SALIDA")
-                        -- AND a.AuthDate BETWEEN :ayer AND :hoy
+                        AND a.AuthDate BETWEEN :ayer AND :hoy
                       ORDER BY DeviceSerial ASC, a.AuthDate DESC, Authtime ASC';
 
             $stmt = $connD->prepare($query);
