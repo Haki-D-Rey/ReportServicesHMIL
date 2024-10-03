@@ -562,7 +562,7 @@ class ApiController
         $connD = $db->getConnection('RRHH_PROD');
 
         $sqlCheck = "SELECT COUNT(*) 
-             FROM [dbo].[MAESTRO DE MARCAS] 
+             FROM RRHH.dbo.[MAESTRO DE MARCAS] 
              WHERE ID_EMPLEADO = :ID_EMPLEADO 
              AND HORA_MARCA = :HORA_MARCA 
              AND TIPO_MARCA = :TIPO_MARCA
