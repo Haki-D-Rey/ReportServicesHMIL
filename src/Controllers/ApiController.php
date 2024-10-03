@@ -629,33 +629,8 @@ class ApiController
 
 
         try {
-            $json_final = [];
+            $json_final = ["MESSAGE" => "SE INSERTARON CONE EXITO","DATA"=> $mutatedArray];
 
-            // Iterar sobre los dispositivos
-            foreach ($mutatedArray as $deviceData) {
-                // Datos completos en "Data"
-                $totalData = $deviceData['Data'];
-                $totalItems = count($totalData);
-
-                // Cálculo de paginación
-                $offset = ($page - 1) * $pageSize;
-                $paginatedData = array_slice($totalData, $offset, $pageSize);
-
-                // Asignar datos paginados al dispositivo
-                $deviceCopy = $deviceData;
-                $deviceCopy['Data'] = $paginatedData;
-
-                // Añadir información de paginación
-                $deviceCopy['pagination'] = [
-                    'page' => $page,
-                    'pageSize' => $pageSize,
-                    'totalItems' => $totalItems,
-                    'totalPages' => ceil($totalItems / $pageSize)
-                ];
-
-                // Añadir el dispositivo con los datos paginados al resultado final
-                $json_final[] = $deviceCopy;
-            }
 
             // Serializar el resultado final como JSON
             $response->getBody()->write(json_encode($json_final));
