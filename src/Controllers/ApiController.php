@@ -541,6 +541,20 @@ class ApiController
             $page = (int) $request->getQueryParams()['page'] ?? 1;
             $pageSize = (int) $request->getQueryParams()['pageSize'] ?? 10;
 
+            //Get the raw HTTP request body
+            $body = file_get_contents('php://input');
+            $dataBody = json_decode($body, true);
+
+            // Obtener parametros de correo
+            $parametrosCorreo = [
+                'fromEmail' => $dataBody['fromEmail'] ?? null,
+                'fromName' => $dataBody['fromName'] ?? null,
+                'destinatary' => $dataBody['destinatary'] ?? null,
+                'subject' => $dataBody['subject'] ?? null,
+                'body' => ""
+            ];
+
+
             $dataStartTime = microtime(true);
             $DatosMarcas = $this->getMarksClockHivision('', '');
             $dataEndTime = microtime(true);
@@ -657,8 +671,8 @@ class ApiController
                 try {
                     $rowsAffected = $connD->exec($sqlInsert);
                     $connD->commit();
-
                     $json_final['message'] = "$rowsAffected registros insertados correctamente.";
+                    $json_final['total_insert'] = $rowsAffected;
                 } catch (Exception $e) {
                     $connD->rollBack();
                     throw new Exception("Error al insertar registros: " . $e->getMessage());
@@ -677,11 +691,16 @@ class ApiController
                 'message' => "Ocurrió un error durante el proceso: " . $e->getMessage(),
                 'code' => $e->getCode()
             ];
-
             return $response->withHeader('content-type', 'application/json')
                 ->withStatus(500)
                 ->getBody()->write(json_encode($json_final));
         }
+
+        $mailer = new EmailController();
+        $parametrosCorreo['body'] = "Se ingresaron del proceso de migración " . $json_final['message'] . " registros insertados correctamente, con un tiempo de inserción de " . $json_final['total_time_seconds'] . " segundos.";
+        $this->mailServer = $mailer->sendEmail($parametrosCorreo);
+        $this->mailServer->send();
+
         $response->getBody()->write(json_encode($json_final));
         return $response
             ->withHeader('content-type', 'application/json')
