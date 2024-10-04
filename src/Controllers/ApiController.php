@@ -531,119 +531,161 @@ class ApiController
 
     public function getBigDataInsertMarks(Request $request, Response $response)
     {
-        // Parámetros de paginación (page y pageSize desde la query)
-        $page = (int) $request->getQueryParams()['page'] ?? 1;
-        $pageSize = (int) $request->getQueryParams()['pageSize'] ?? 10;
-
-        $DatosMarcas = $this->getMarksClockHivision('', '');
-
-        $Template = [
-            "DeviceSerial" => "DeviceSerial",
-            "DeviceName" => "DeviceName",
-            "Data" => [
-                "PersonID" => "PersonID",
-                "AuthDateTime" => "AuthDateTime",
-                "AuthDate" => "AuthDate",
-                "Authtime" => "Authtime",
-                "Direction" => "Direction"
-            ]
-        ];
-
-        $utils = new Utils();
-        $mutatedArray = $utils->transformArray($DatosMarcas, $Template, true, 'DeviceSerial');
-
-        foreach ($mutatedArray as &$itemData) {
-            $item = $this->filterDataByDirection1($itemData['Data'], ['DS-K1T8003EF20210407V010330ENF77487337']);
-            $itemData['Data'] = $item;
-        }
-        unset($itemData);
-
-        $db = new DB($this->databases);
-        $connD = $db->getConnection('RRHH_PROD');
-
-        $sqlCheck = "SELECT COUNT(*) 
-             FROM RRHH.dbo.[MAESTRO DE MARCAS] 
-             WHERE ID_EMPLEADO = :ID_EMPLEADO 
-             AND HORA_MARCA = :HORA_MARCA 
-             AND TIPO_MARCA = :TIPO_MARCA
-             AND IDRELOJ = :IDRELOJ";
-
-        $stmtCheck = $connD->prepare($sqlCheck);
-
-        $sqlInsert = "INSERT INTO RRHH.dbo.[MAESTRO DE MARCAS] 
-            (IDEMPRESA, IDRELOJ, ID_EMPLEADO, HORA_MARCA, FECHA_MARCA, FECHA_CARGA, ARCHIVO, NUMERO, PROGRAMADO, OBSERVACION, TIPO_MARCA) 
-            VALUES 
-            (:IDEMPRESA, :IDRELOJ, :ID_EMPLEADO, :HORA_MARCA, :FECHA_MARCA, :FECHA_CARGA, '.', '.', 0, '.', :TIPO_MARCA)";
-
-        $stmtInsert = $connD->prepare($sqlInsert);
-
-        foreach ($mutatedArray as $deviceData) {
-            $batchSize = 100000;
-            $totalRecords = count($deviceData['Data']);
-            $batches = array_chunk($deviceData['Data'], $batchSize); // Dividir los datos en lotes
-            $DeviceSerial = $deviceData['DeviceSerial'];
-            $idReloj = $this->getRelojIdBySerial($DeviceSerial);
-
-            foreach ($batches as $batch) {
-                try {
-                    // Iniciar una transacción
-                    $connD->beginTransaction();
-
-                    foreach ($batch as $registro) {
-                        $CodigoEmpleado = '00000' . $registro['PersonID'];
-
-                        // Validación de existencia del registro
-                        $stmtCheck->execute([
-                            ':ID_EMPLEADO' => $CodigoEmpleado,
-                            ':HORA_MARCA'  => $registro['AuthDateTime'],
-                            ':TIPO_MARCA'  => $registro['Direction'],
-                            ':IDRELOJ'  => $idReloj
-
-                        ]);
-
-                        // Si el registro no existe, se inserta
-                        if ($stmtCheck->fetchColumn() == 0) {
-                        $stmtInsert->execute([
-                            ':IDEMPRESA'    => 1,
-                            ':IDRELOJ'      => $idReloj,
-                            ':ID_EMPLEADO'  => $CodigoEmpleado,
-                            ':HORA_MARCA'   => $registro['AuthDateTime'],
-                            ':FECHA_MARCA'  => $registro['AuthDate'],
-                            ':FECHA_CARGA'  => date('Y-m-d H:i:s'),
-                            ':TIPO_MARCA'   => $registro['Direction']
-                        ]);
-                        }
-                    }
-
-                    // Confirmar la transacción
-                    $connD->commit();
-                    echo "Lote insertado con éxito.\n";
-                } catch (Exception $e) {
-                    // Si hay error, revertir la transacción
-                    $connD->rollBack();
-                    echo "Error al insertar el lote: " . $e->getMessage() . "\n";
-                }
-            }
-        }
-
-
+        $json_final = [];
 
         try {
-            $json_final = ["MESSAGE" => "SE INSERTARON CONE EXITO","DATA"=> $mutatedArray];
+            // Inicia el contador para todo el proceso
+            $startTime = microtime(true);
+            $json_final['overall_start_time'] = $startTime;
+
+            $page = (int) $request->getQueryParams()['page'] ?? 1;
+            $pageSize = (int) $request->getQueryParams()['pageSize'] ?? 10;
+
+            $dataStartTime = microtime(true);
+            $DatosMarcas = $this->getMarksClockHivision('', '');
+            $dataEndTime = microtime(true);
+            $json_final['data_fetch_time'] = round($dataEndTime - $dataStartTime, 4);
+
+            // Transformación de datos
+            $transformStartTime = microtime(true);
+            $Template = [
+                "DeviceSerial" => "DeviceSerial",
+                "DeviceName" => "DeviceName",
+                "Data" => [
+                    "PersonID" => "PersonID",
+                    "AuthDateTime" => "AuthDateTime",
+                    "AuthDate" => "AuthDate",
+                    "Authtime" => "Authtime",
+                    "Direction" => "Direction"
+                ]
+            ];
+
+            $utils = new Utils();
+            $mutatedArray = $utils->transformArray($DatosMarcas, $Template, true, 'DeviceSerial');
+            $transformEndTime = microtime(true);
+            $json_final['transform_time'] = round($transformEndTime - $transformStartTime, 4);
+
+            foreach ($mutatedArray as &$itemData) {
+                $item = $this->filterDataByDirection1($itemData['Data'], ['DS-K1T8003EF20210407V010330ENF77487337']);
+                $itemData['Data'] = $item;
+            }
+            unset($itemData);
+
+            $db = new DB($this->databases);
+            $connD = $db->getConnection('RRHH_PROD');
+
+            $yesterday = date('Y-m-d', strtotime('-20 day'));
+            $today = date('Y-m-d');
+
+            $validationStartTime = microtime(true);
+            $sqlRRHH = "SELECT ID_EMPLEADO, HORA_MARCA, TIPO_MARCA, IDRELOJ
+                        FROM RRHH.dbo.[MAESTRO DE MARCAS]
+                        WHERE FECHA_MARCA BETWEEN :yesterday AND :today";
+
+            $stmtRRHH = $connD->prepare($sqlRRHH);
+            $stmtRRHH->execute([
+                ':yesterday' => $yesterday,
+                ':today'     => $today
+            ]);
+
+            $existingRecords = $stmtRRHH->fetchAll(PDO::FETCH_ASSOC);
+            $existingMap = [];
+            foreach ($existingRecords as $record) {
+                $key = $record['ID_EMPLEADO'] . '_' . $record['HORA_MARCA'] . '_' . $record['TIPO_MARCA'] . '_' . $record['IDRELOJ'];
+                $existingMap[$key] = true;
+            }
+
+            $validationEndTime = microtime(true);
+            $json_final['validation_time'] = round($validationEndTime - $validationStartTime, 4);
+
+            $filterStartTime = microtime(true);
 
 
-            // Serializar el resultado final como JSON
-            $response->getBody()->write(json_encode($json_final));
-            return $response
-                ->withHeader('content-type', 'application/json')
-                ->withStatus(200);
-        } catch (PDOException $e) {
-            $error = ["message" => $e->getMessage()];
-            $response->getBody()->write(json_encode($error));
-            return $response
-                ->withHeader('content-type', 'application/json')
-                ->withStatus(500);
+            $deviceSerials = array_column($mutatedArray, 'DeviceSerial');
+            $relojIds = $this->getRelojIdsBySerials($deviceSerials);
+
+            $chunks = array_chunk($mutatedArray, 1000);
+            $filteredData = [];
+
+            $filteredChunks = array_map(function ($chunk) use ($existingMap, $relojIds) {
+                $tempFiltered = [];
+                foreach ($chunk as $deviceData) {
+                    $DeviceSerial = $deviceData['DeviceSerial'];
+                    $idReloj = $relojIds[$DeviceSerial] ?? 0;
+
+                    foreach ($deviceData['Data'] as $registro) {
+                        $CodigoEmpleado = '00000' . $registro['PersonID'];
+                        $key = $CodigoEmpleado . '_' . $registro['AuthDateTime'] . '_' . $registro['Direction'] . '_' . $idReloj;
+                        if (!isset($existingMap[$key])) {
+                            $tempFiltered[] = [
+                                'IDEMPRESA' => 1,
+                                'IDRELOJ' => $idReloj,
+                                'ID_EMPLEADO' => $CodigoEmpleado,
+                                'HORA_MARCA' => $registro['AuthDateTime'],
+                                'FECHA_MARCA' => $registro['AuthDate'],
+                                'FECHA_CARGA' => date('Y-m-d H:i:s'),
+                                'TIPO_MARCA' => $registro['Direction']
+                            ];
+                        }
+                    }
+                }
+                return $tempFiltered;
+            }, $chunks);
+
+            foreach ($filteredChunks as $chunk) {
+                $filteredData = array_merge($filteredData, $chunk);
+            }
+
+            $filterEndTime = microtime(true);
+            $json_final['filter_time'] = round($filterEndTime - $filterStartTime, 4);
+
+            $insertStartTime = microtime(true);
+
+            if (!empty($filteredData)) {
+                $sqlInsert = "INSERT INTO RRHH.dbo.[MAESTRO DE MARCAS] 
+                 (IDEMPRESA, IDRELOJ, ID_EMPLEADO, HORA_MARCA, FECHA_MARCA, FECHA_CARGA, ARCHIVO, NUMERO, PROGRAMADO, OBSERVACION, TIPO_MARCA) VALUES ";
+
+                $insertValues = [];
+                foreach ($filteredData as $data) {
+                    $insertValues[] = "({$data['IDEMPRESA']}, {$data['IDRELOJ']}, '{$data['ID_EMPLEADO']}', '{$data['HORA_MARCA']}', 
+                           '{$data['FECHA_MARCA']}', '{$data['FECHA_CARGA']}', '.', '.', 0, '.', '{$data['TIPO_MARCA']}')";
+                }
+
+                $sqlInsert .= implode(', ', $insertValues);
+                $connD->beginTransaction();
+
+                try {
+                    $rowsAffected = $connD->exec($sqlInsert);
+                    $connD->commit();
+
+                    $json_final['message'] = "$rowsAffected registros insertados correctamente.";
+                } catch (Exception $e) {
+                    $connD->rollBack();
+                    throw new Exception("Error al insertar registros: " . $e->getMessage());
+                }
+            } else {
+                $json_final['message'] = "No hay registros nuevos para insertar.";
+            }
+
+            $insertEndTime = microtime(true);
+            $json_final['insert_time'] = round($insertEndTime - $insertStartTime, 4);
+
+            $endTime = microtime(true);
+            $json_final['total_time_seconds'] = round($endTime - $startTime, 4);
+        } catch (Exception $e) {
+            $json_final['error'] = [
+                'message' => "Ocurrió un error durante el proceso: " . $e->getMessage(),
+                'code' => $e->getCode()
+            ];
+
+            return $response->withHeader('content-type', 'application/json')
+                ->withStatus(500)
+                ->getBody()->write(json_encode($json_final));
         }
+        $response->getBody()->write(json_encode($json_final));
+        return $response
+            ->withHeader('content-type', 'application/json')
+            ->withStatus(200);
     }
 
     public function getSellSiServi(array $arrayParams): array
@@ -850,28 +892,42 @@ class ApiController
         }
     }
 
-    public function getRelojIdBySerial($deviceSerial): ?int
+    public function getRelojIdsBySerials(array $deviceSerials): array
     {
+        $relojIds = [];
+        if (empty($deviceSerials)) {
+            return $relojIds; // Retornar un array vacío si no hay seriales
+        }
+
         try {
             $db = new DB($this->databases);
             $connD = $db->getConnection('RRHH_PROD');
 
-            // Prepara la consulta para obtener el ID del reloj
-            $query = "SELECT IDRELOJ FROM RRHH.[dbo].[CAT DE RELOJ] WHERE DeviceSerial = :deviceSerial";
-            $stmt = $connD->prepare($query);
-            $stmt->execute([':deviceSerial' => $deviceSerial]);
+            // Crear una lista de placeholders para la consulta
+            $placeholders = rtrim(str_repeat('?, ', count($deviceSerials)), ', ');
 
-            $result = $stmt->fetch(PDO::FETCH_OBJ);
+            // Prepara la consulta para obtener los IDs de reloj
+            $query = "SELECT DeviceSerial, IDRELOJ 
+                      FROM RRHH.[dbo].[CAT DE RELOJ] 
+                      WHERE DeviceSerial IN ($placeholders)";
+            $stmt = $connD->prepare($query);
+            $stmt->execute($deviceSerials);
+
+            // Obtiene todos los resultados
+            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Mapea los resultados al array de retorno
+            foreach ($results as $row) {
+                $relojIds[$row['DeviceSerial']] = $row['IDRELOJ'];
+            }
 
             // Cerramos la conexión
             $db = null;
-
-            // Retorna el IDRELOJ si se encuentra, de lo contrario, retorna null
-            return $result ? $result->IDRELOJ : null;
         } catch (PDOException $e) {
             error_log($e->getMessage());
-            return null;
         }
+
+        return $relojIds;
     }
 
     public function getHorarios(): array
@@ -912,7 +968,7 @@ class ApiController
             $connD = $db->getConnection('IVSM_PROD'); // Suponiendo que 'IVSM_PROD' es el nombre de tu conexión
 
             // Obtener las fechas de ayer y hoy
-            $fecha_inicio = $fecha_inicio ? $fecha_inicio : date('Y-m-d', strtotime('-1 day')); // Formato de la fecha para la consulta
+            $fecha_inicio = $fecha_inicio ? $fecha_inicio : date('Y-m-d', strtotime('-20 day')); // Formato de la fecha para la consulta
             $fecha_fin = $fecha_fin ? $fecha_fin : date('Y-m-d'); // Fecha de ayer
 
             // Consulta SQL modificada para incluir el filtrado por AuthDate
