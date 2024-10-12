@@ -588,7 +588,7 @@ class ApiController
             $db = new DB($this->databases);
             $connD = $db->getConnection('RRHH_PROD');
 
-            $yesterday = date('Y-m-d', strtotime('-20 day'));
+            $yesterday = date('Y-m-d', strtotime('-1 day'));
             $today = date('Y-m-d');
 
             $validationStartTime = microtime(true);
@@ -987,7 +987,7 @@ class ApiController
             $connD = $db->getConnection('IVSM_PROD'); // Suponiendo que 'IVSM_PROD' es el nombre de tu conexión
 
             // Obtener las fechas de ayer y hoy
-            $fecha_inicio = $fecha_inicio ? $fecha_inicio : date('Y-m-d', strtotime('-20 day')); // Formato de la fecha para la consulta
+            $fecha_inicio = $fecha_inicio ? $fecha_inicio : date('Y-m-d', strtotime('-1 day')); // Formato de la fecha para la consulta
             $fecha_fin = $fecha_fin ? $fecha_fin : date('Y-m-d'); // Fecha de ayer
 
             // Consulta SQL modificada para incluir el filtrado por AuthDate
