@@ -26,6 +26,7 @@ class DB
             $this->connections[$name] = $this->connect(
                 $config['driver'],
                 $config['host'],
+                $config['port'] ?? "",
                 $config['user'],
                 $config['pass'],
                 $config['dbname']
@@ -33,19 +34,23 @@ class DB
         }
     }
 
-    private function connect($driver, $host, $user, $pass, $dbname)
+    private function connect($driver, $host, $port, $user, $pass, $dbname)
     {
         $opciones = array();
         if ($driver === 'pgsql') {
-            $dsn = "pgsql:host=$host;dbname=$dbname";
+            $dsn = "pgsql:host=$host;port=$port;dbname=$dbname";
         } elseif ($driver === 'mysql') {
-            $dsn = "mysql:host=$host;dbname=$dbname";
+            $dsn = "mysql:host=$host;port=$port;dbname=$dbname";
         } elseif ($driver === 'sqlsrv') {
-            // Aquí cambiamos 'host' por 'Server' para SQL Server
-            $dsn = "dblib:host=$host;dbname=$dbname;charset=UTF-8;";
+            // Para SQL Server con sqlsrv
+            $dsn = "sqlsrv:Server=$host,$port;Database=$dbname";
+        } elseif ($driver === 'dblib') {
+            // Para SQL Server con dblib
+            $dsn = "dblib:host=$host:$port;dbname=$dbname;charset=UTF-8;";
         } else {
             throw new \InvalidArgumentException("Driver '$driver' no es soportado.");
         }
+
         $conn = new PDO($dsn, $user, $pass);
         $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         return $conn;

@@ -15,6 +15,7 @@ return function (App $app) {
         $group->get('/excel', ApiController::class . ':getExcelReporteServiciosAlimentacion')->setName('api.getExcel');
         $group->get('/reporte-eventos', ApiController::class . ':getExcelReportInscripcionesEvent')->setName('api.reportEvents');
         $group->get('/data-eventos', ApiController::class . ':getPlanInscripcionEvents')->setName('api.dataEventos');
+        $group->get('/data-siservi-clientes', ApiController::class . ':getExcelReporteServiciosAlimentacionDatosClientes')->setName('api.dataSiserviClientes');
         $group->get('/con', ApiController::class . ':getConnection')->setName('api.con');
     });
 
