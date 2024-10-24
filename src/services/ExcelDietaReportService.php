@@ -28,29 +28,29 @@ class ExcelDietaReportService
         // Fusionar Celda Fecha
         $sheet->mergeCells('B2:B3');
         $sheet->setCellValue('B2', 'FECHA');
-
+        $sheet->setCellValue('C2', 'TIPO SERVICIOS');
         // Fusionar celdas para SEDE GENERAL
         $sheet->mergeCells('C2:H2');
         // Establecer valor para SEDE GENERAL
-        $sheet->setCellValue('C2', 'REPORTE DIETA TODAS LAS AREAS DE SERVICIOS');
+        $sheet->setCellValue('C2', 'REPORTE DIETA TODAS LAS ÁREAS DE SERVICIOS');
         // Fusionar celdas para SEDE OFICIALES 
-        $sheet->mergeCells('I2:I3');
-        $sheet->setCellValue('I2', 'TOTAL');
+        $sheet->mergeCells('J2:J3');
+        $sheet->setCellValue('J2', 'TOTAL');
 
         // Establecer encabezados
-        $sheet->setCellValue('C3', 'DESAYUNO')
-            ->setCellValue('D3', 'ALMUERZO')
-            ->setCellValue('E3', 'CENA')
-            ->setCellValue('F3', 'MERIENDA DE DESAYUNO')
-            ->setCellValue('G3', 'MERIENDA DE ALMUERZO')
-            ->setCellValue('H3', 'MERIENDA DE CENA');
+        $sheet->setCellValue('D3', 'DESAYUNO')
+            ->setCellValue('E3', 'ALMUERZO')
+            ->setCellValue('F3', 'CENA')
+            ->setCellValue('G3', 'MERIENDA DE DESAYUNO')
+            ->setCellValue('H3', 'MERIENDA DE ALMUERZO')
+            ->setCellValue('I3', 'MERIENDA DE CENA');
         return $sheet;
     }
 
     public function getData(array $parametros): array
     {
         $Api = new ApiController();
-        $data = $Api -> getSellSiServi($parametros);
+        $data = $Api->getSellSiServi($parametros);
         return $data;
     }
 
@@ -77,17 +77,23 @@ class ExcelDietaReportService
             $fecha = $item["fecha"];
             $sede_id = $item["sede_id"];
             $servicio = $item["servicio"];
+            $tipo_servicio = $item["tipo_servicio"];
 
             // Verificar si la fecha ya está en el arreglo reestructurado
             if (!isset($reestructurado[$fecha])) {
                 $reestructurado[$fecha] = [];
             }
 
+            // Verificar si el tipo de servicio ya está en el arreglo reestructurado para esa fecha
+            if (!isset($reestructurado[$fecha][$tipo_servicio])) {
+                $reestructurado[$fecha][$tipo_servicio] = [];
+            }
+
             // Verificar si el servicio esperado para esta sede está definido
             if (isset($serviciosEsperados[$servicio]) && in_array($sede_id, $serviciosEsperados[$servicio])) {
                 // Si es así, agregar el item con letter_excel correspondiente si está definido
                 $letter_excel = isset($mapeoServicios[$servicio][$sede_id]) ? $mapeoServicios[$servicio][$sede_id] : "";
-                $reestructurado[$fecha][] = [
+                $reestructurado[$fecha][$tipo_servicio][] = [
                     "sede_id" => $sede_id,
                     "servicio" => $servicio,
                     "cantidad" => $item["cantidad"],
@@ -96,93 +102,117 @@ class ExcelDietaReportService
             }
         }
 
-        $reestructurado = $this->resetValue($reestructurado, $serviciosEsperados, $mapeoServicios);
+        $tiposServiciosEsperados = [
+            "Hospitalización General",
+            "Hospitalización Privada"
+        ];
+
+        $reestructurado = $this->resetValue($reestructurado, $serviciosEsperados, $mapeoServicios, $tiposServiciosEsperados);
+        ksort($reestructurado);
         return $reestructurado;
     }
 
-    public function resetValue(array $reestructurado, array $serviciosEsperados, array $mapeoServicios): array
-    {
-        // Añadir los servicios que no están presentes en $data pero se esperan
+    public function resetValue(
+        array $reestructurado,
+        array $serviciosEsperados,
+        array $mapeoServicios,
+        array $tiposServiciosEsperados
+    ): array {
+        // Iterar sobre cada combinación de servicio, sede, y tipo de servicio esperado
         foreach ($serviciosEsperados as $servicio => $sedes) {
             foreach ($sedes as $sede_id) {
-                foreach ($reestructurado as $fecha => $items) {
-                    $encontrado = false;
-                    foreach ($items as $item) {
-                        if ($item['sede_id'] === $sede_id && $item['servicio'] === $servicio) {
-                            $encontrado = true;
-                            break;
+                foreach ($tiposServiciosEsperados as $tipo_servicio_esperado) {
+                    foreach ($reestructurado as $fecha => &$tipos_servicio) {
+
+                        // Inicializar el tipo de servicio si no existe
+                        if (!isset($tipos_servicio[$tipo_servicio_esperado])) {
+                            $tipos_servicio[$tipo_servicio_esperado] = [];
                         }
-                    }
-                    if (!$encontrado) {
-                        $letter_excel = isset($mapeoServicios[$servicio][$sede_id]) ? $mapeoServicios[$servicio][$sede_id] : "";
-                        $reestructurado[$fecha][] = [
-                            "sede_id" => $sede_id,
-                            "servicio" => $servicio,
-                            "cantidad" => "0.00", // Valor por defecto
-                            "letter_excel" => $letter_excel
-                        ];
+
+                        // Verificar si ya existe el servicio en la sede para el tipo_servicio_esperado
+                        $existe = array_filter($tipos_servicio[$tipo_servicio_esperado], function ($item) use ($sede_id, $servicio) {
+                            return $item['sede_id'] === $sede_id && $item['servicio'] === $servicio;
+                        });
+
+                        // Si no existe, agregar con valores por defecto
+                        if (empty($existe)) {
+                            $letter_excel = $mapeoServicios[$servicio][$sede_id] ?? "";
+                            $tipos_servicio[$tipo_servicio_esperado][] = [
+                                "sede_id" => $sede_id,
+                                "servicio" => $servicio,
+                                "cantidad" => "0.00", // Valor por defecto
+                                "letter_excel" => $letter_excel
+                            ];
+                        }
                     }
                 }
             }
         }
+
         return $reestructurado;
     }
+
 
 
     public function formData(array $data, array $style, int $row, Worksheet $sheet): void
     {
 
-        $sheet->getStyle("B2:I2")->applyFromArray($style);
-        $sheet->getStyle("B3:I3")->applyFromArray($style);
+        $sheet->getStyle("B2:J2")->applyFromArray($style);
+        $sheet->getStyle("B3:J3")->applyFromArray($style);
 
-        $row = 4;
         foreach ($data as $fecha => $datos) {
-            // Insertar la fecha en la columna B
-            $sheet->setCellValue('B' . $row, $fecha);
-
             // Obtener los datos para la fecha actual
             $datos_para_fecha = $datos;
 
             // Inicializar un contador para las filas internas
             $fila_interna = $row;
+            $cantidad_tipo_servicios = count($datos_para_fecha);
 
-            // Iterar sobre los datos para la fecha actual
-            foreach ($datos_para_fecha as $dato) {
-                // Obtener los valores de los datos
-                $sede_id = $dato["sede_id"];
-                $valor = $dato["cantidad"];
+            foreach ($datos_para_fecha as $tipo_servicio => $item_tipo_servicios) {
 
-                // Determinar las columnas según el valor de "sede_id"
-                $columna = $dato["letter_excel"][0] ?? [];
+                $sheet->setCellValue('C' . $fila_interna, mb_strtoupper($tipo_servicio, 'UTF-8'));
+                $datos_para_tipo_servicios = $item_tipo_servicios;
+                // Iterar sobre los datos para la fecha actual
+                foreach ($datos_para_tipo_servicios as $dato) {
+                    // Obtener los valores de los datos
+                    $sede_id = $dato["sede_id"];
+                    $valor = $dato["cantidad"];
 
-                switch ($columna) {
-                    case 'C':
-                    case 'D':
-                    case 'E':
-                    case 'F':
-                    case 'G':
-                    case 'H':
-                        // Si es sede 2, coloca los datos en las columnas H a K
-                        if ($sede_id === '0') {
-                            $sheet->setCellValue($columna . $fila_interna, $valor);
-                        }
-                        break;
+                    // Determinar las columnas según el valor de "sede_id"
+                    $columna = $dato["letter_excel"][0] ?? [];
+
+                    switch ($columna) {
+                        case 'D':
+                        case 'E':
+                        case 'F':
+                        case 'G':
+                        case 'H':
+                        case 'I':
+                            // Si es sede 2, coloca los datos en las columnas H a K
+                            if ($sede_id === '0') {
+                                $sheet->setCellValue($columna . $fila_interna, $valor);
+                            }
+                            break;
+                    }
                 }
+                // Calcular totales de las dos sedes
+                // $sheet->setCellValue('I' .$row, "=SUMA(C${row}:H${row})");
+                $sheet->setCellValue('J' . $fila_interna, "=(D${fila_interna}+E${fila_interna}+F${fila_interna}+G${fila_interna}+H${fila_interna}+I${fila_interna})");
+
+                // Aplicar estilo a toda la fila
+                $sheet->getStyle("B${fila_interna}:J${fila_interna}")->applyFromArray($style);
+
+                $fila_interna++;
             }
-
-            // Calcular totales de las dos sedes
-            // $sheet->setCellValue('I' .$row, "=SUMA(C${row}:H${row})");
-            $sheet->setCellValue('I' . $row, "=(C${row}+D${row}+E${row}+F${row}+G${row}+H${row})");
-
-            // Aplicar estilo a toda la fila
-            $sheet->getStyle("B${row}:I${fila_interna}")->applyFromArray($style);
-
-            // Avanzar a la siguiente fila
-            $row = $fila_interna + 1;
+            $rango_inicio = $fila_interna - $cantidad_tipo_servicios;
+            $rango_final = $fila_interna - 1;
+            $sheet->mergeCells("B{$rango_inicio}:B{$rango_final}");
+            $sheet->setCellValue('B' . $rango_inicio, $fecha);
+            $row = $fila_interna;
         }
 
         // Configurar anchos de columna
-        foreach (range('B', 'I') as $column) {
+        foreach (range('B', 'J') as $column) {
             $sheet->getColumnDimension($column)->setAutoSize(true);
         }
     }

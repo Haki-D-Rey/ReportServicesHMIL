@@ -5,14 +5,15 @@ namespace App\Controllers;
 use App\Models\DB;
 use App\services\ExcelDietaReportService;
 use App\services\ExcelReportEventsService;
-use App\services\ExcelSiserviDatosClientesReportService;
 use App\services\ExcelSiserviReportService;
 use PDO;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use PDOException;
 use Slim\Psr7\Stream;
-
+use App\Helpers\Utils;
+use App\services\ExcelSiserviDatosClientesReportService;
+use Exception;
 use PHPMailer\PHPMailer\PHPMailer;
 
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -25,17 +26,17 @@ class ApiController
     protected $databases = [
         'SISERVI' => [
             'driver' => 'pgsql',
-            'host' => 'localhost',
+            'host' => '10.0.30.147',
             'user' => 'postgres',
             'port' => '5432',
-            'pass' => 'Maleisho*-+31102019',
+            'pass' => '&ecurity23',
             'dbname' => 'siservi_catering_local'
         ],
         'DIETA' => [
             'driver' => 'sqlsrv',
             'host' => 'Dieta',
-            'port' => '1433',
             'user' => 'sa',
+            'port' => '1433',
             'pass' => 'PA$$W0RD',
             'dbname' => 'Dieta'
         ],
@@ -47,13 +48,36 @@ class ApiController
             'pass' => 'clmjsfgcrt5m',
             'dbname' => 'db2gdg4nfxpgyk'
         ],
-        // 'Prueba-VDHMIL' => [
-        //     'driver' => 'sqlsrv',
-        //     'host' => 'Prueba-VDHMIL',
-        //     'user' => 'sa',
-        //     'pass' => '&ecurity23',
-        //     'dbname' => 'Prueba-VDHMIL'
-        // ],
+        'RRHH_DEV' => [
+            'driver' => 'sqlsrv',
+            'host' => 'RRHH_DEV',
+            'port' => '1433',
+            'user' => 'sa',
+            'pass' => '2r>6C8A>tKcq',
+            'dbname' => 'RRHH_DEV'
+        ],
+        'IVSM_DEV' => [
+            'driver' => 'mysql',
+            'host' => '10.0.30.185',
+            'user' => 'developer',
+            'pass' => 'T41g<l6rnF7J',
+            'dbname' => 'IVSM_DEV'
+        ],
+        'IVSM_PROD' => [
+            'driver' => 'mysql',
+            'host' => '10.0.30.146',
+            'port' => '3308',
+            'user' => 'developer',
+            'pass' => 'T41g<l6rnF7J',
+            'dbname' => 'ivsm'
+        ],
+        'RRHH_PROD' => [
+            'driver' => 'sqlsrv',
+            'host' => 'RRHH',
+            'user' => 'sa',
+            'pass' => 'P@$$W0RD',
+            'dbname' => 'Dieta'
+        ],
     ];
 
     public function index()
@@ -209,7 +233,7 @@ class ApiController
 
             // Crear una nueva hoja de cálculo
             $sheetSI = $spreadsheet->getActiveSheet();
-            $sheetSI->setTitle("REPORTE SISERVI - $current_month $year");
+            $sheetSI->setTitle("SISERVI - $current_month $year");
             $excelServicesSiservi->setHeaders($sheetSI);
 
             $data = $this->getSellSiServi($arryaParams);
@@ -279,7 +303,7 @@ class ApiController
 
             // Crear una nueva hoja de cálculo
             $sheetDieta = $spreadsheet->createSheet();
-            $sheetDieta->setTitle("REPORTE DIETA $current_month $year");
+            $sheetDieta->setTitle("DIETA $current_month $year");
 
             $excelServicesDieta->setDocumentProperties($spreadsheet);
 
@@ -290,39 +314,39 @@ class ApiController
             // Definir el arreglo de mapeo de serv_id a letter_excel
             $mapeoServicios = [
                 [
-                    "servicio" => "ALMUERZO",
+                    "servicio" => "DESAYUNO",
                     "letter_excel" => [
                         ["sede_id" => 0, "letter" => ["D"]],
                     ]
                 ],
                 [
+                    "servicio" => "ALMUERZO",
+                    "letter_excel" => [
+                        ["sede_id" => 0, "", "letter" => ["E"]],
+                    ]
+                ],
+                [
                     "servicio" => "CENA",
                     "letter_excel" => [
-                        ["sede_id" => 0, "letter" => ["E"]],
-                    ]
-                ],
-                [
-                    "servicio" => "DESAYUNO",
-                    "letter_excel" => [
-                        ["sede_id" => 0, "letter" => ["C"]],
-                    ]
-                ],
-                [
-                    "servicio" => "MERIENDA PARA ALMUERZO",
-                    "letter_excel" => [
-                        ["sede_id" => 0, "letter" => ["G"]],
-                    ]
-                ],
-                [
-                    "servicio" => "MERIENDA PARA CENA",
-                    "letter_excel" => [
-                        ["sede_id" => 0, "letter" => ["H"]],
+                        ["sede_id" => 0, "letter" => ["F"]],
                     ]
                 ],
                 [
                     "servicio" => "MERIENDA PARA DESAYUNO",
                     "letter_excel" => [
-                        ["sede_id" => 0, "letter" => ["F"]],
+                        ["sede_id" => 0, "letter" => ["G"]],
+                    ]
+                ],
+                [
+                    "servicio" => "MERIENDA PARA ALMUERZO",
+                    "letter_excel" => [
+                        ["sede_id" => 0, "letter" => ["H"]],
+                    ]
+                ],
+                [
+                    "servicio" => "MERIENDA PARA CENA",
+                    "letter_excel" => [
+                        ["sede_id" => 0, "letter" => ["I"]],
                     ]
                 ],
                 // Puedes agregar más elementos según sea necesario
@@ -509,20 +533,15 @@ class ApiController
         }
     }
 
-
     public function getExcelReporteServiciosAlimentacionDatosClientes(Request $request, Response $response)
     {
         try {
-
             //Get the raw HTTP request body
             $body = file_get_contents('php://input');
-
             // For example, you can decode JSON if the request body is JSON
             $dataBody = json_decode($body, true);
-
             // Obtener la fecha actual
             $hoy = date('Y-m-d');
-
             // Obtener los parámetros de fecha del cuerpo de la solicitud
             $fecha_inicio = isset($dataBody['fecha_inicio']) && !empty($dataBody['fecha_inicio']) ? $dataBody['fecha_inicio'] : date('Y-m-d', strtotime($hoy . ' 0 day'));
             $fecha_fin = isset($dataBody['fecha_fin']) && !empty($dataBody['fecha_fin']) ? $dataBody['fecha_fin'] : date('Y-m-d', strtotime($hoy . ' 0 day'));
@@ -535,11 +554,9 @@ class ApiController
                 'subject' => $dataBody['subject'] ?? null,
                 'body' => $dataBody['body'] ?? null
             ];
-
             // Obtener el valor del parámetro tipo_busquedad
             $queryParams = $request->getQueryParams();
             $tipo_busquedad = $queryParams['tipo_busquedad'] ?? 1;
-
             // Obtener la fecha actual y el nombre del mes en inglés
             $month = date('F');
             $year = date('Y');
@@ -565,21 +582,17 @@ class ApiController
                 "tipo_busquedad" => $tipo_busquedad,
                 "lista_servicios" => $lista_servicios
             ];
-
             // Obtener el nombre del mes en español
             $current_month = $months[$month];
             // Crear una instancia de PhpSpreadsheet
             $spreadsheet = new Spreadsheet();
             $excelServicesDieta = new ExcelDietaReportService();
             $excelServicesSiservi = new ExcelSiserviDatosClientesReportService();
-
             $excelServicesSiservi->setDocumentProperties($spreadsheet);
-
             // Crear una nueva hoja de cálculo
             $sheetSI = $spreadsheet->getActiveSheet();
             $sheetSI->setTitle("REPORTE SISERVI - $current_month $year");
             $excelServicesSiservi->setHeaders($sheetSI);
-
             $data = $excelServicesSiservi->getData($arryaParams);
             // Configurar el estilo de la tabla
             $styleArray = [
@@ -595,26 +608,19 @@ class ApiController
                     ],
                 ],
             ];
-
             $excelServicesSiservi->formData($data, $styleArray, 4, $sheetSI);
-
-
             // Guardar el archivo excel en el servidor
             $arrayFile = $excelServicesSiservi->saveFile($spreadsheet, "Reporte Servicios Alimentacios HMIL $year");
-
             $filename = $arrayFile["filename"];
             $mailer = new EmailController();
-
             // Configurar el correo electrónico
             $this->mailServer = $mailer->sendEmail($parametrosCorreo);
             // Adjuntar el archivo Excel
             $this->mailServer->addAttachment($filename, basename($filename));
             // Enviar el correo electrónico
             $this->mailServer->send();
-
             // Configurar la respuesta para descargar el archivo
             $fileSize = filesize($filename);
-
             $response = $response->withHeader('Content-Description', 'File Transfer')
                 ->withHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
                 ->withHeader('Content-Disposition', 'attachment;filename="' . basename($filename) . '"')
@@ -622,15 +628,12 @@ class ApiController
                 ->withHeader('Cache-Control', 'must-revalidate')
                 ->withHeader('Pragma', 'public')
                 ->withHeader('Content-Length', $fileSize);
-
             // Leer el archivo y enviarlo como respuesta
             $file = fopen($filename, 'rb');
             $stream = new Stream($file);
             $response = $response->withBody($stream);
-
             // Eliminar el archivo después de enviarlo
             unlink($filename);
-
             return $response;
         } catch (PDOException $e) {
             $error = ["message" => $e->getMessage()];
@@ -639,6 +642,184 @@ class ApiController
                 ->withHeader('content-type', 'application/json')
                 ->withStatus(500);
         }
+    }
+
+    public function getBigDataInsertMarks(Request $request, Response $response)
+    {
+        $json_final = [];
+
+        try {
+            // Inicia el contador para todo el proceso
+            $startTime = microtime(true);
+            $json_final['overall_start_time'] = $startTime;
+
+            $page = (int) $request->getQueryParams()['page'] ?? 1;
+            $pageSize = (int) $request->getQueryParams()['pageSize'] ?? 10;
+
+            //Get the raw HTTP request body
+            $body = file_get_contents('php://input');
+            $dataBody = json_decode($body, true);
+
+            // Obtener parametros de correo
+            $parametrosCorreo = [
+                'fromEmail' => $dataBody['fromEmail'] ?? null,
+                'fromName' => $dataBody['fromName'] ?? null,
+                'destinatary' => $dataBody['destinatary'] ?? null,
+                'subject' => $dataBody['subject'] ?? null,
+                'body' => ""
+            ];
+
+
+            $dataStartTime = microtime(true);
+            $DatosMarcas = $this->getMarksClockHivision('', '');
+            $dataEndTime = microtime(true);
+            $json_final['data_fetch_time'] = round($dataEndTime - $dataStartTime, 4);
+
+            // Transformación de datos
+            $transformStartTime = microtime(true);
+            $Template = [
+                "DeviceSerial" => "DeviceSerial",
+                "DeviceName" => "DeviceName",
+                "Data" => [
+                    "PersonID" => "PersonID",
+                    "AuthDateTime" => "AuthDateTime",
+                    "AuthDate" => "AuthDate",
+                    "Authtime" => "Authtime",
+                    "Direction" => "Direction"
+                ]
+            ];
+
+            $utils = new Utils();
+            $mutatedArray = $utils->transformArray($DatosMarcas, $Template, true, 'DeviceSerial');
+            $transformEndTime = microtime(true);
+            $json_final['transform_time'] = round($transformEndTime - $transformStartTime, 4);
+
+            foreach ($mutatedArray as &$itemData) {
+                $item = $this->filterDataByDirection1($itemData['Data'], ['DS-K1T8003EF20210407V010330ENF77487337']);
+                $itemData['Data'] = $item;
+            }
+            unset($itemData);
+
+            $db = new DB($this->databases);
+            $connD = $db->getConnection('RRHH_PROD');
+
+            $yesterday = date('Y-m-d', strtotime('-1 day'));
+            $today = date('Y-m-d');
+
+            $validationStartTime = microtime(true);
+            $sqlRRHH = "SELECT ID_EMPLEADO, HORA_MARCA, TIPO_MARCA, IDRELOJ
+                        FROM RRHH.dbo.[MAESTRO DE MARCAS]
+                        WHERE FECHA_MARCA BETWEEN :yesterday AND :today";
+
+            $stmtRRHH = $connD->prepare($sqlRRHH);
+            $stmtRRHH->execute([
+                ':yesterday' => $yesterday,
+                ':today'     => $today
+            ]);
+
+            $existingRecords = $stmtRRHH->fetchAll(PDO::FETCH_ASSOC);
+            $existingMap = [];
+            foreach ($existingRecords as $record) {
+                $key = $record['ID_EMPLEADO'] . '_' . $record['HORA_MARCA'] . '_' . $record['TIPO_MARCA'] . '_' . $record['IDRELOJ'];
+                $existingMap[$key] = true;
+            }
+
+            $validationEndTime = microtime(true);
+            $json_final['validation_time'] = round($validationEndTime - $validationStartTime, 4);
+
+            $filterStartTime = microtime(true);
+
+
+            $deviceSerials = array_column($mutatedArray, 'DeviceSerial');
+            $relojIds = $this->getRelojIdsBySerials($deviceSerials);
+
+            $chunks = array_chunk($mutatedArray, 1000);
+            $filteredData = [];
+
+            $filteredChunks = array_map(function ($chunk) use ($existingMap, $relojIds) {
+                $tempFiltered = [];
+                foreach ($chunk as $deviceData) {
+                    $DeviceSerial = $deviceData['DeviceSerial'];
+                    $idReloj = $relojIds[$DeviceSerial] ?? 0;
+
+                    foreach ($deviceData['Data'] as $registro) {
+                        $CodigoEmpleado = '00000' . $registro['PersonID'];
+                        $key = $CodigoEmpleado . '_' . $registro['AuthDateTime'] . '_' . $registro['Direction'] . '_' . $idReloj;
+                        if (!isset($existingMap[$key])) {
+                            $tempFiltered[] = [
+                                'IDEMPRESA' => 1,
+                                'IDRELOJ' => $idReloj,
+                                'ID_EMPLEADO' => $CodigoEmpleado,
+                                'HORA_MARCA' => $registro['AuthDateTime'],
+                                'FECHA_MARCA' => $registro['AuthDate'],
+                                'FECHA_CARGA' => date('Y-m-d H:i:s'),
+                                'TIPO_MARCA' => $registro['Direction']
+                            ];
+                        }
+                    }
+                }
+                return $tempFiltered;
+            }, $chunks);
+
+            foreach ($filteredChunks as $chunk) {
+                $filteredData = array_merge($filteredData, $chunk);
+            }
+
+            $filterEndTime = microtime(true);
+            $json_final['filter_time'] = round($filterEndTime - $filterStartTime, 4);
+
+            $insertStartTime = microtime(true);
+
+            if (!empty($filteredData)) {
+                $sqlInsert = "INSERT INTO RRHH.dbo.[MAESTRO DE MARCAS] 
+                 (IDEMPRESA, IDRELOJ, ID_EMPLEADO, HORA_MARCA, FECHA_MARCA, FECHA_CARGA, ARCHIVO, NUMERO, PROGRAMADO, OBSERVACION, TIPO_MARCA) VALUES ";
+
+                $insertValues = [];
+                foreach ($filteredData as $data) {
+                    $insertValues[] = "({$data['IDEMPRESA']}, {$data['IDRELOJ']}, '{$data['ID_EMPLEADO']}', '{$data['HORA_MARCA']}', 
+                           '{$data['FECHA_MARCA']}', '{$data['FECHA_CARGA']}', '.', '.', 0, '.', '{$data['TIPO_MARCA']}')";
+                }
+
+                $sqlInsert .= implode(', ', $insertValues);
+                $connD->beginTransaction();
+
+                try {
+                    $rowsAffected = $connD->exec($sqlInsert);
+                    $connD->commit();
+                    $json_final['message'] = "$rowsAffected registros insertados correctamente.";
+                    $json_final['total_insert'] = $rowsAffected;
+                } catch (Exception $e) {
+                    $connD->rollBack();
+                    throw new Exception("Error al insertar registros: " . $e->getMessage());
+                }
+            } else {
+                $json_final['message'] = "No hay registros nuevos para insertar.";
+            }
+
+            $insertEndTime = microtime(true);
+            $json_final['insert_time'] = round($insertEndTime - $insertStartTime, 4);
+
+            $endTime = microtime(true);
+            $json_final['total_time_seconds'] = round($endTime - $startTime, 4);
+        } catch (Exception $e) {
+            $json_final['error'] = [
+                'message' => "Ocurrió un error durante el proceso: " . $e->getMessage(),
+                'code' => $e->getCode()
+            ];
+            return $response->withHeader('content-type', 'application/json')
+                ->withStatus(500)
+                ->getBody()->write(json_encode($json_final));
+        }
+
+        $mailer = new EmailController();
+        $parametrosCorreo['body'] = "Se ingresaron del proceso de migración " . $json_final['message'] . " registros insertados correctamente, con un tiempo de inserción de " . $json_final['total_time_seconds'] . " segundos.";
+        $this->mailServer = $mailer->sendEmail($parametrosCorreo);
+        $this->mailServer->send();
+
+        $response->getBody()->write(json_encode($json_final));
+        return $response
+            ->withHeader('content-type', 'application/json')
+            ->withStatus(200);
     }
 
     public function getSellSiServi(array $arrayParams): array
@@ -654,7 +835,7 @@ class ApiController
                 DATE(v.vc_emision_feho) AS fecha,
                 SUM(v.vc_total) AS total_del_dia
         FROM dmona.ventas_cab v
-        WHERE " . ($tipo_busquedad == 1 ? "DATE(v.vc_emision_feho) >= '$fecha_inicio' AND DATE(v.vc_emision_feho) <= '$fecha_fin'" : "DATE(v.vc_emision_feho) = '$fecha_inicio'") . "
+        WHERE v.vc_anulado <> 1 AND " . ($tipo_busquedad == 1 ? "DATE(v.vc_emision_feho) >= '$fecha_inicio' AND DATE(v.vc_emision_feho) <= '$fecha_fin'" : "DATE(v.vc_emision_feho) = '$fecha_inicio'") . "
         GROUP BY v.sede_id, v.serv_id, DATE(v.vc_emision_feho)";
 
         $sql =
@@ -693,24 +874,34 @@ class ApiController
             $db = new DB($this->databases);
             $connD = $db->getConnection('DIETA');
             $sql =
-                "SELECT
+                "SELECT 
                     CONVERT(VARCHAR, p.fecha, 120) AS fecha,
-                    t.nombre  AS servicio,
+                    t.nombre as servicio,
+                    CASE 
+                        WHEN as2.idAreaServicio IN (12,21,46)  THEN 'Hospitalización Privada'
+                        ELSE 'Hospitalización General'
+                    END AS tipo_servicio,
                     '0' AS sede_id,
                     COUNT(1) AS cantidad
-            FROM
+            FROM 
                 Pedidos p
-            INNER JOIN
+            INNER JOIN 
                 Ordenes o ON p.idPedido = o.idPedido
-            INNER JOIN
+            INNER JOIN 
                 AreasServicios as2 ON as2.idAreaServicio = p.idAreaServicio
-            INNER JOIN
+            INNER JOIN 
                 Tiempos t ON o.idTiempo = t.idTiempo
             WHERE " . ($tipo_busquedad == 1 ?  "p.fecha BETWEEN CONVERT(DATE, '$fecha_inicio', 103) AND CONVERT(DATE, '$fecha_fin', 103)" : "p.fecha = CONVERT(DATE, '$fecha_fin', 103)") . "
-            GROUP BY
-                CONVERT(DATE, p.fecha, 103),
-                t.nombre
-            ORDER BY p.fecha ASC;";
+            GROUP BY 
+                CONVERT(VARCHAR, p.fecha, 120),
+                t.nombre,
+                CASE 
+                    WHEN as2.idAreaServicio IN (12,21,46)  THEN 'Hospitalización Privada'
+                    ELSE 'Hospitalización General'
+                END
+            ORDER BY 
+                CONVERT(VARCHAR, p.fecha, 120) DESC,
+                t.nombre ASC;";
 
             $stmt2 = $connD->query($sql);
             $dietaReport = $stmt2->fetchAll(PDO::FETCH_OBJ);
@@ -739,15 +930,15 @@ class ApiController
                 count(1) as cantidad
             FROM
                 wp_eiparticipante tb
-                INNER JOIN wp_tipo_planes_inscripcion tpins
+                INNER JOIN wp_tipo_planes_inscripcion tpins 
             ON tb.id_tipo_planes_inscripcion = tpins.id
             WHERE
-                tb.estaInscrito = 1
+                tb.estaInscrito = 1 
                 AND tb.evento IN (
                     "XXI PRECONGRESO CIENTÍFICO MÉDICO",
                     "XXI CONGRESO CIENTÍFICO MÉDICO",
                     "XXI PRECONGRESO y CONGRESO CIENTÍFICO MÉDICO"
-                )
+                ) 
                 AND tb.id_participante >= 1030 AND tb.id_participante <= 2018
                 AND DATE(tb.fecha) <= :fecha
             GROUP BY
@@ -783,15 +974,15 @@ class ApiController
             count(1) as cantidad
         FROM
             wp_eiparticipante tb
-            INNER JOIN wp_tipo_planes_inscripcion tpins
+            INNER JOIN wp_tipo_planes_inscripcion tpins 
         ON tb.id_tipo_planes_inscripcion = tpins.id
         WHERE
-            tb.estaInscrito = 1
+            tb.estaInscrito = 1 
             AND tb.evento IN (
                 "XXI PRECONGRESO CIENTÍFICO MÉDICO",
                 "XXI CONGRESO CIENTÍFICO MÉDICO",
                 "XXI PRECONGRESO y CONGRESO CIENTÍFICO MÉDICO"
-            )
+            ) 
             AND tb.id_participante >= 1030 AND tb.id_participante <= 2018
             AND DATE(tb.fecha) <= :fecha
         GROUP BY
@@ -835,13 +1026,254 @@ class ApiController
         }
     }
 
+    public function getRelojIdsBySerials(array $deviceSerials): array
+    {
+        $relojIds = [];
+        if (empty($deviceSerials)) {
+            return $relojIds; // Retornar un array vacío si no hay seriales
+        }
+
+        try {
+            $db = new DB($this->databases);
+            $connD = $db->getConnection('RRHH_PROD');
+
+            // Crear una lista de placeholders para la consulta
+            $placeholders = rtrim(str_repeat('?, ', count($deviceSerials)), ', ');
+
+            // Prepara la consulta para obtener los IDs de reloj
+            $query = "SELECT DeviceSerial, IDRELOJ 
+                      FROM RRHH.[dbo].[CAT DE RELOJ] 
+                      WHERE DeviceSerial IN ($placeholders)";
+            $stmt = $connD->prepare($query);
+            $stmt->execute($deviceSerials);
+
+            // Obtiene todos los resultados
+            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Mapea los resultados al array de retorno
+            foreach ($results as $row) {
+                $relojIds[$row['DeviceSerial']] = $row['IDRELOJ'];
+            }
+
+            // Cerramos la conexión
+            $db = null;
+        } catch (PDOException $e) {
+            error_log($e->getMessage());
+        }
+
+        return $relojIds;
+    }
+
+    public function getHorarios(): array
+    {
+        try {
+            $db = new DB($this->databases); // Suponiendo que DB es tu clase para manejar la conexión a la base de datos
+            $connD = $db->getConnection('RRHH_DEV'); // Suponiendo que 'EVENTOS' es el nombre de tu conexión
+            $query = 'SELECT 
+                            ID_T_HORARIO AS ID,
+                            DESCRIPCION,
+                            CHRT,
+                            C_DIAS_T,
+                            C_DIAS_L,
+                            CONVERT(VARCHAR(32), [HORA_E], 108) AS HoraEntrada,
+                            CONVERT(VARCHAR(32), [HORA_S], 108) AS HoraSalida 
+                      FROM dbo.[CAT DE TIPO DE HORARIO]';
+            // $query = 'SELECT descripcion FROM wp_tipo_institucion_oficial WHERE estado = 1 AND id = :id';
+
+            $stmt = $connD->prepare($query);
+            $stmt->execute();
+            $horarios = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+            // Cerramos la conexión
+            $db = null;
+
+            return $horarios;
+        } catch (PDOException $e) {
+            error_log($e->getMessage());  // Registrar el mensaje de error en el log
+            $error = ["message" => $e->getMessage()];
+            return $error;
+        }
+    }
+
+    public function getMarksClockHivision($fecha_inicio, $fecha_fin): array
+    {
+        try {
+            $db = new DB($this->databases); // Suponiendo que DB es tu clase para manejar la conexión a la base de datos
+            $connD = $db->getConnection('IVSM_PROD'); // Suponiendo que 'IVSM_PROD' es el nombre de tu conexión
+
+            // Obtener las fechas de ayer y hoy
+            $fecha_inicio = $fecha_inicio ? $fecha_inicio : date('Y-m-d', strtotime('-1 day')); // Formato de la fecha para la consulta
+            $fecha_fin = $fecha_fin ? $fecha_fin : date('Y-m-d'); // Fecha de ayer
+
+            // Consulta SQL modificada para incluir el filtrado por AuthDate
+            $query = 'SELECT *
+                      FROM attlog a 
+                      WHERE a.Direction IN ("ENTRADA", "SALIDA")
+                        AND a.AuthDate BETWEEN :ayer AND :hoy
+                      ORDER BY DeviceSerial ASC, a.AuthDate DESC, Authtime ASC';
+
+            $stmt = $connD->prepare($query);
+
+            // Bindear las fechas como parámetros
+            $stmt->bindValue(':ayer', $fecha_inicio);
+            $stmt->bindValue(':hoy', $fecha_fin);
+
+            $stmt->execute();
+            $horarios = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+            // Cerramos la conexión
+            $db = null;
+
+            return $horarios;
+        } catch (PDOException $e) {
+            error_log($e->getMessage());  // Registrar el mensaje de error en el log
+            $error = ["message" => $e->getMessage()];
+            return $error;
+        }
+    }
+
+
+    public function restructuredArray($array): array
+    {
+        foreach ($array as $objeto) {
+            $arreglo = (array) $objeto;
+            $arreglo_arreglos[] = $arreglo;
+        }
+        return $arreglo_arreglos;
+    }
+
+    private static function filterDataByDirection1(array $data, array $deviceSerials): array
+    {
+        // Agruparemos los datos por PersonID y AuthDate
+        $groupedData = [];
+
+        foreach ($data as $item) {
+            $personID = $item['PersonID'];
+            $authDate = $item['AuthDate'];
+            $direction = $item['Direction'];
+
+            // Solo agrupar datos válidos
+            if ($direction === 'ENTRADA' || $direction === 'SALIDA') {
+                // Inicializamos un grupo si no existe
+                if (!isset($groupedData[$personID][$authDate])) {
+                    $groupedData[$personID][$authDate] = [
+                        'ENTRADA' => [],
+                        'SALIDA' => [],
+                    ];
+                }
+
+                // Añadimos el item al grupo correspondiente
+                $groupedData[$personID][$authDate][$direction][] = $item;
+
+                // Para el caso específico de 'ENTRADA', limitamos a 2 entradas
+                if ($direction === 'ENTRADA') {
+                    // Si hay más de 2 entradas, mantenemos solo la primera y la última
+                    if (count($groupedData[$personID][$authDate]['ENTRADA']) > 2) {
+                        usort($groupedData[$personID][$authDate]['ENTRADA'], function ($a, $b) {
+                            return strcmp($a['Authtime'], $b['Authtime']);
+                        });
+
+                        // Guardar la primera y la última
+                        $firstEntry = $groupedData[$personID][$authDate]['ENTRADA'][0];
+                        $lastEntry = end($groupedData[$personID][$authDate]['ENTRADA']);
+
+                        // Reemplazamos el array de entradas por solo la primera y última
+                        $groupedData[$personID][$authDate]['ENTRADA'] = [$firstEntry, $lastEntry];
+                    }
+                }
+            }
+        }
+
+        $filteredData = [];
+        $previousEntry = null;
+        foreach ($groupedData as $personID => $dates) {
+            foreach ($dates as $authDate => $directions) {
+                if (isset($directions['ENTRADA']) && count($directions['ENTRADA']) <> 0) {
+
+                    usort($directions['ENTRADA'], function ($a, $b) {
+                        return strcmp($a['Authtime'], $b['Authtime']);
+                    });
+
+                    if (count($directions['ENTRADA']) > 1 && count($directions['SALIDA']) > 1) {
+                        $filteredData[] = $directions['ENTRADA'][0];
+                    } elseif (count($directions['ENTRADA']) > 1 && count($directions['SALIDA']) === 0) {
+
+                        $filteredData[] = $directions['ENTRADA'][0];
+
+                        $firstEntryTime = strtotime($directions['ENTRADA'][0]['Authtime']);
+                        $secondEntryTime = strtotime($directions['ENTRADA'][1]['Authtime']);
+
+                        $timeDifference = $secondEntryTime - $firstEntryTime;
+
+                        if ($timeDifference > 18000) {
+                            $directions['ENTRADA'][1]['Direction'] = 'SALIDA';
+                            $filteredData[] = $directions['ENTRADA'][1];
+                        }
+                    } else {
+                        $filteredData[] = $directions['ENTRADA'][0];
+                    }
+
+                    if ($previousEntry !== null) {
+                        $currentEntryTime = strtotime($directions['ENTRADA'][0]['Authtime']);
+                        $previousEntryTime = strtotime($previousEntry['Authtime']);
+
+
+                        $timeDifference = ($currentEntryTime - $previousEntryTime) / 3600;
+
+                        if ($timeDifference >= 10) {
+                            $previousEntry['Direction'] = 'SALIDA';
+                            $filteredData[] = $previousEntry;
+                        }
+                    }
+
+                    $previousEntry = end($directions['ENTRADA']);
+                }
+
+                // Filtrar las salidas
+                if (isset($directions['SALIDA']) && count($directions['SALIDA']) <> 0) {
+                    usort($directions['SALIDA'], function ($a, $b) {
+                        return strcmp($b['Authtime'], $a['Authtime']);
+                    });
+
+                    $filteredData[] = $directions['SALIDA'][0];
+                }
+            }
+        }
+        return array_filter($filteredData, function ($item) {
+            return !empty($item['Direction']) && ($item['Direction'] === 'ENTRADA' || $item['Direction'] === 'SALIDA');
+        });
+    }
+
+    private static function filterDataByCriteria(array $devices, string $deviceSerial, string $direction, string $personID): array
+    {
+        $filteredDevices = [];
+
+        foreach ($devices as $device) {
+            // Verificar si el DeviceSerial coincide
+            if ($device['DeviceSerial'] === $deviceSerial) {
+                // Filtrar los datos internos por Direction y PersonID
+                $filteredData = array_filter($device['Data'], function ($item) use ($direction, $personID) {
+                    return $item['Direction'] === $direction && $item['PersonID'] == $personID;
+                });
+
+                // Si hay datos que coinciden con los criterios, agregar al resultado
+                if (!empty($filteredData)) {
+                    // Asignar los datos filtrados al nuevo array
+                    $device['Data'] = array_values($filteredData); // Reindexar
+                    $filteredDevices[] = $device; // Agregar el dispositivo con los datos filtrados
+                }
+            }
+        }
+
+        return $filteredDevices;
+    }
+
     public function getSellSiServiClientService(array $arrayParams): array
     {
         $tipo_busquedad = $arrayParams['tipo_busquedad'];
         $fecha_inicio = $arrayParams['fecha_inicio'];
         $fecha_fin = $arrayParams['fecha_fin'];
         $listaServicioAlimentacion = implode("','", $arrayParams['lista_servicios']);
-
         $query = "SELECT ROW_NUMBER() OVER (ORDER BY cli.sede_id ASC, v.vc_emision_feho::time ASC) AS Contador,
                         concat(cli.clie_nom, ' ', cli.clie_pat, ' ', cli.clie_mat) AS NombreCompleto,
                         CAST(cli.clie_docnum AS VARCHAR(64)) as Carnet,
@@ -864,20 +1296,10 @@ class ApiController
             $stmt = $conn->query($query);
             $siserviReport = $stmt->fetchAll(PDO::FETCH_OBJ);
             $db = null;
-
             return $siserviReport;
         } catch (PDOException $e) {
             $error = ["message" => $e->getMessage()];
             return $error;
         }
-    }
-
-    public function restructuredArray($array): array
-    {
-        foreach ($array as $objeto) {
-            $arreglo = (array) $objeto;
-            $arreglo_arreglos[] = $arreglo;
-        }
-        return $arreglo_arreglos;
     }
 }
