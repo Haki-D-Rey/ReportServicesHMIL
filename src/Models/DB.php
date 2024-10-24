@@ -34,7 +34,7 @@ class DB
         }
     }
 
-    private function connect($driver, $host, $port ,$user, $pass, $dbname)
+    private function connect($driver, $host, $port, $user, $pass, $dbname)
     {
         try {
             // Determinar el DSN basado en el driver

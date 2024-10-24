@@ -12,6 +12,7 @@ use Psr\Http\Message\ServerRequestInterface as Request;
 use PDOException;
 use Slim\Psr7\Stream;
 use App\Helpers\Utils;
+use App\services\ExcelSiserviDatosClientesReportService;
 use Exception;
 use PHPMailer\PHPMailer\PHPMailer;
 
@@ -27,6 +28,7 @@ class ApiController
             'driver' => 'pgsql',
             'host' => '10.0.30.147',
             'user' => 'postgres',
+            'port' => '5432',
             'pass' => '&ecurity23',
             'dbname' => 'siservi_catering_local'
         ],
@@ -34,6 +36,7 @@ class ApiController
             'driver' => 'sqlsrv',
             'host' => 'Dieta',
             'user' => 'sa',
+            'port' => '1433',
             'pass' => 'PA$$W0RD',
             'dbname' => 'Dieta'
         ],
@@ -41,6 +44,7 @@ class ApiController
             'driver' => 'mysql',
             'host' => 'c98055.sgvps.net',
             'user' => 'udeq5kxktab81',
+            'port' => '3306',
             'pass' => 'clmjsfgcrt5m',
             'dbname' => 'db2gdg4nfxpgyk'
         ],
@@ -519,6 +523,117 @@ class ApiController
             // Eliminar el archivo después de enviarlo
             unlink($filename);
 
+            return $response;
+        } catch (PDOException $e) {
+            $error = ["message" => $e->getMessage()];
+            $response->getBody()->write(json_encode($error));
+            return $response
+                ->withHeader('content-type', 'application/json')
+                ->withStatus(500);
+        }
+    }
+
+    public function getExcelReporteServiciosAlimentacionDatosClientes(Request $request, Response $response)
+    {
+        try {
+            //Get the raw HTTP request body
+            $body = file_get_contents('php://input');
+            // For example, you can decode JSON if the request body is JSON
+            $dataBody = json_decode($body, true);
+            // Obtener la fecha actual
+            $hoy = date('Y-m-d');
+            // Obtener los parámetros de fecha del cuerpo de la solicitud
+            $fecha_inicio = isset($dataBody['fecha_inicio']) && !empty($dataBody['fecha_inicio']) ? $dataBody['fecha_inicio'] : date('Y-m-d', strtotime($hoy . ' 0 day'));
+            $fecha_fin = isset($dataBody['fecha_fin']) && !empty($dataBody['fecha_fin']) ? $dataBody['fecha_fin'] : date('Y-m-d', strtotime($hoy . ' 0 day'));
+            $lista_servicios =  isset($dataBody['lista_servicios']) && !empty($dataBody['lista_servicios']) ? $dataBody['lista_servicios'] : ["ALMUERZO"];
+            // Obtener parametros de correo
+            $parametrosCorreo = [
+                'fromEmail' => $dataBody['fromEmail'] ?? null,
+                'fromName' => $dataBody['fromName'] ?? null,
+                'destinatary' => $dataBody['destinatary'] ?? null,
+                'subject' => $dataBody['subject'] ?? null,
+                'body' => $dataBody['body'] ?? null
+            ];
+            // Obtener el valor del parámetro tipo_busquedad
+            $queryParams = $request->getQueryParams();
+            $tipo_busquedad = $queryParams['tipo_busquedad'] ?? 1;
+            // Obtener la fecha actual y el nombre del mes en inglés
+            $month = date('F');
+            $year = date('Y');
+            // Traducir el nombre del mes al español
+            $months = [
+                'January' => 'Enero',
+                'February' => 'Febrero',
+                'March' => 'Marzo',
+                'April' => 'Abril',
+                'May' => 'Mayo',
+                'June' => 'Junio',
+                'July' => 'Julio',
+                'August' => 'Agosto',
+                'September' => 'Septiembre',
+                'October' => 'Octubre',
+                'November' => 'Noviembre',
+                'December' => 'Diciembre'
+            ];
+
+            $arryaParams = [
+                "fecha_inicio" => $fecha_inicio,
+                "fecha_fin" => $fecha_fin,
+                "tipo_busquedad" => $tipo_busquedad,
+                "lista_servicios" => $lista_servicios
+            ];
+            // Obtener el nombre del mes en español
+            $current_month = $months[$month];
+            // Crear una instancia de PhpSpreadsheet
+            $spreadsheet = new Spreadsheet();
+            $excelServicesDieta = new ExcelDietaReportService();
+            $excelServicesSiservi = new ExcelSiserviDatosClientesReportService();
+            $excelServicesSiservi->setDocumentProperties($spreadsheet);
+            // Crear una nueva hoja de cálculo
+            $sheetSI = $spreadsheet->getActiveSheet();
+            $sheetSI->setTitle("REPORTE SISERVI - $current_month $year");
+            $excelServicesSiservi->setHeaders($sheetSI);
+            $data = $excelServicesSiservi->getData($arryaParams);
+            // Configurar el estilo de la tabla
+            $styleArray = [
+                'font' => [
+                    'bold' => true,
+                ],
+                'alignment' => [
+                    'horizontal' => Alignment::HORIZONTAL_CENTER,
+                ],
+                'borders' => [
+                    'allBorders' => [
+                        'borderStyle' => Border::BORDER_THIN,
+                    ],
+                ],
+            ];
+            $excelServicesSiservi->formData($data, $styleArray, 4, $sheetSI);
+            // Guardar el archivo excel en el servidor
+            $arrayFile = $excelServicesSiservi->saveFile($spreadsheet, "Reporte Servicios Alimentacios HMIL $year");
+            $filename = $arrayFile["filename"];
+            $mailer = new EmailController();
+            // Configurar el correo electrónico
+            $this->mailServer = $mailer->sendEmail($parametrosCorreo);
+            // Adjuntar el archivo Excel
+            $this->mailServer->addAttachment($filename, basename($filename));
+            // Enviar el correo electrónico
+            $this->mailServer->send();
+            // Configurar la respuesta para descargar el archivo
+            $fileSize = filesize($filename);
+            $response = $response->withHeader('Content-Description', 'File Transfer')
+                ->withHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+                ->withHeader('Content-Disposition', 'attachment;filename="' . basename($filename) . '"')
+                ->withHeader('Expires', '0')
+                ->withHeader('Cache-Control', 'must-revalidate')
+                ->withHeader('Pragma', 'public')
+                ->withHeader('Content-Length', $fileSize);
+            // Leer el archivo y enviarlo como respuesta
+            $file = fopen($filename, 'rb');
+            $stream = new Stream($file);
+            $response = $response->withBody($stream);
+            // Eliminar el archivo después de enviarlo
+            unlink($filename);
             return $response;
         } catch (PDOException $e) {
             $error = ["message" => $e->getMessage()];
@@ -1151,5 +1266,40 @@ class ApiController
         }
 
         return $filteredDevices;
+    }
+
+    public function getSellSiServiClientService(array $arrayParams): array
+    {
+        $tipo_busquedad = $arrayParams['tipo_busquedad'];
+        $fecha_inicio = $arrayParams['fecha_inicio'];
+        $fecha_fin = $arrayParams['fecha_fin'];
+        $listaServicioAlimentacion = implode("','", $arrayParams['lista_servicios']);
+        $query = "SELECT ROW_NUMBER() OVER (ORDER BY cli.sede_id ASC, v.vc_emision_feho::time ASC) AS Contador,
+                        concat(cli.clie_nom, ' ', cli.clie_pat, ' ', cli.clie_mat) AS NombreCompleto,
+                        CAST(cli.clie_docnum AS VARCHAR(64)) as Carnet,
+                        s.sede_descri AS Sede,
+                        COALESCE(ca.cat_descri, 'SIN DEFINIR') AS Departamento,
+                        v.serv_id AS Servicio,
+                        v.vc_total AS Cantidad,
+                        v.vc_emision_feho::date AS FechaCorte
+                  FROM dmona.clientes cli
+                  INNER JOIN dmona.ventas_cab v ON v.clie_docnum = cli.clie_docnum
+                  INNER JOIN dmona.sede s ON s.sede_id = cli.sede_id
+                  LEFT JOIN dmona.categoria ca ON ca.cat_id = cli.cat_id
+                  WHERE " . ($tipo_busquedad == 1 ? "v.vc_emision_feho::date BETWEEN '$fecha_inicio' AND '$fecha_fin'" : "v.vc_emision_feho::date = '$fecha_inicio'") .
+            " AND v.vc_anulado = 0 
+                  AND v.serv_id IN ('$listaServicioAlimentacion') 
+                  ORDER BY cli.sede_id ASC, v.vc_emision_feho::time ASC;";
+        try {
+            $db = new DB($this->databases);
+            $conn = $db->getConnection('SISERVI');
+            $stmt = $conn->query($query);
+            $siserviReport = $stmt->fetchAll(PDO::FETCH_OBJ);
+            $db = null;
+            return $siserviReport;
+        } catch (PDOException $e) {
+            $error = ["message" => $e->getMessage()];
+            return $error;
+        }
     }
 }
