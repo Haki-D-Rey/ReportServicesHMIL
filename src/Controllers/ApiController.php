@@ -743,7 +743,8 @@ class ApiController
                     $idReloj = $relojIds[$DeviceSerial] ?? 0;
 
                     foreach ($deviceData['Data'] as $registro) {
-                        $CodigoEmpleado = '00000' . $registro['PersonID'];
+                        // $CodigoEmpleado = '00000' . $registro['PersonID'];
+                        $CodigoEmpleado = str_pad($registro['PersonID'], 10, '0', STR_PAD_LEFT);
                         $key = $CodigoEmpleado . '_' . $registro['AuthDateTime'] . '_' . $registro['Direction'] . '_' . $idReloj;
                         if (!isset($existingMap[$key])) {
                             $tempFiltered[] = [
