@@ -689,6 +689,17 @@ class ApiController
                 ]
             ];
 
+            $devices = [
+                ["DeviceSerial" => "DS-K1T8003MF20220523V010400ENK89383023", "DeviceName" => "EDIFICIO D"],
+                ["DeviceSerial" => "DS-K1T8003MF20220523V010400ENK89382766", "DeviceName" => "POLICLINICA TIPITAPA"],
+                ["DeviceSerial" => "DS-K1T320MFX20221110V030500ENL34922859", "DeviceName" => "UAAE FISIOTERAPIA"],
+                ["DeviceSerial" => "DS-K1T320MFX20221110V030500ENL34922754", "DeviceName" => "UAAE LOGOPEDIA"],
+                ["DeviceSerial" => "DS-K1T320MFX20221110V030500ENL34922814", "DeviceName" => "UAAE REUMATOLOGIA"],
+                ["DeviceSerial" => "DS-K1T671MF20230330V030230ENAD1514630", "DeviceName" => "EDIFICIO 1C"],
+                ["DeviceSerial" => "DS-K1T8003EF20210407V010330ENF77487337", "DeviceName" => "EDIFICIO A"],
+                ["DeviceSerial" => "DS-K1T671MF20210406V030230ENG12677159", "DeviceName" => "EDIFICIO 1B"]
+            ];
+
             $utils = new Utils();
             $mutatedArray = $utils->transformArray($DatosMarcas, $Template, true, 'DeviceSerial');
             $transformEndTime = microtime(true);
@@ -729,16 +740,25 @@ class ApiController
 
             $filterStartTime = microtime(true);
 
-
+            foreach ($mutatedArray as &$item) {
+                if ($item['DeviceSerial'] === "") {
+                    foreach ($devices as $device) {
+                        if ($device['DeviceName'] === $item['DeviceName']) {
+                            $item['DeviceSerial'] = $device['DeviceSerial'];
+                            break;
+                        }
+                    }
+                }
+            }
             $deviceSerials = array_column($mutatedArray, 'DeviceSerial');
             $relojIds = $this->getRelojIdsBySerials($deviceSerials);
 
             $chunks = array_chunk($mutatedArray, 1000);
             $filteredData = [];
 
-            $filteredChunks = array_map(function ($chunk) use ($existingMap, $relojIds) {
+            $filteredChunks = array_map(function ($chunks) use ($existingMap, $relojIds) {
                 $tempFiltered = [];
-                foreach ($chunk as $deviceData) {
+                foreach ($chunks as $deviceData) {
                     $DeviceSerial = $deviceData['DeviceSerial'];
                     $idReloj = $relojIds[$DeviceSerial] ?? 0;
 
