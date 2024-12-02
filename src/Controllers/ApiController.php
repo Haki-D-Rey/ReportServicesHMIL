@@ -689,6 +689,7 @@ class ApiController
                 ]
             ];
 
+
             $devices = [
                 ["DeviceSerial" => "DS-K1T8003MF20220523V010400ENK89383023", "DeviceName" => "EDIFICIO D"],
                 ["DeviceSerial" => "DS-K1T8003MF20220523V010400ENK89382766", "DeviceName" => "POLICLINICA TIPITAPA"],
@@ -700,16 +701,30 @@ class ApiController
                 ["DeviceSerial" => "DS-K1T671MF20210406V030230ENG12677159", "DeviceName" => "EDIFICIO 1B"]
             ];
 
+            $deviceMap = [];
+            foreach ($devices as $device) {
+                $deviceMap[$device['DeviceName']] = $device['DeviceSerial'];
+            }
+
             $utils = new Utils();
             $mutatedArray = $utils->transformArray($DatosMarcas, $Template, true, 'DeviceSerial');
             $transformEndTime = microtime(true);
             $json_final['transform_time'] = round($transformEndTime - $transformStartTime, 4);
 
             foreach ($mutatedArray as &$itemData) {
-                $item = $this->filterDataByDirection1($itemData['Data'], ['DS-K1T8003EF20210407V010330ENF77487337']);
-                $itemData['Data'] = $item;
+                $itemData['Data'] = $this->filterDataByDirection1($itemData['Data'], ['DS-K1T8003EF20210407V010330ENF77487337']);
             }
             unset($itemData);
+
+            foreach ($mutatedArray as &$item) {
+                if (empty($item['DeviceSerial'])) {
+                    if (isset($deviceMap[$item['DeviceName']])) {
+                        $item['DeviceSerial'] = $deviceMap[$item['DeviceName']];
+                    }
+                }
+            }
+            unset($item);
+            $deviceSerials = array_column($mutatedArray, 'DeviceSerial');
 
             $db = new DB($this->databases);
             $connD = $db->getConnection('RRHH_PROD');
@@ -740,17 +755,6 @@ class ApiController
 
             $filterStartTime = microtime(true);
 
-            foreach ($mutatedArray as &$item) {
-                if ($item['DeviceSerial'] === "") {
-                    foreach ($devices as $device) {
-                        if ($device['DeviceName'] === $item['DeviceName']) {
-                            $item['DeviceSerial'] = $device['DeviceSerial'];
-                            break;
-                        }
-                    }
-                }
-            }
-            $deviceSerials = array_column($mutatedArray, 'DeviceSerial');
             $relojIds = $this->getRelojIdsBySerials($deviceSerials);
 
             $chunks = array_chunk($mutatedArray, 1000);
@@ -1226,7 +1230,7 @@ class ApiController
 
                         $timeDifference = $secondEntryTime - $firstEntryTime;
 
-                        if ($timeDifference > 18000) {
+                        if ($timeDifference > 7200) {
                             $directions['ENTRADA'][1]['Direction'] = 'SALIDA';
                             $filteredData[] = $directions['ENTRADA'][1];
                         }
