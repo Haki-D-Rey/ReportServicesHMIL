@@ -796,21 +796,28 @@ class ApiController
             $insertStartTime = microtime(true);
 
             if (!empty($filteredData)) {
-                $sqlInsert = "INSERT INTO RRHH.dbo.[MAESTRO DE MARCAS] 
-                 (IDEMPRESA, IDRELOJ, ID_EMPLEADO, HORA_MARCA, FECHA_MARCA, FECHA_CARGA, ARCHIVO, NUMERO, PROGRAMADO, OBSERVACION, TIPO_MARCA) VALUES ";
 
-                $insertValues = [];
-                foreach ($filteredData as $data) {
-                    $insertValues[] = "({$data['IDEMPRESA']}, {$data['IDRELOJ']}, '{$data['ID_EMPLEADO']}', '{$data['HORA_MARCA']}', 
-                           '{$data['FECHA_MARCA']}', '{$data['FECHA_CARGA']}', '.', '.', 0, '.', '{$data['TIPO_MARCA']}')";
-                }
-
-                $sqlInsert .= implode(', ', $insertValues);
+                $chunkedData = array_chunk($filteredData, 1000);
                 $connD->beginTransaction();
 
                 try {
-                    $rowsAffected = $connD->exec($sqlInsert);
+                    foreach ($chunkedData as $chunk) {
+
+                        $sqlInsert = "INSERT INTO RRHH.dbo.[MAESTRO DE MARCAS] 
+                        (IDEMPRESA, IDRELOJ, ID_EMPLEADO, HORA_MARCA, FECHA_MARCA, FECHA_CARGA, ARCHIVO, NUMERO, PROGRAMADO, OBSERVACION, TIPO_MARCA) 
+                        VALUES ";
+
+                        $insertValues = [];
+                        foreach ($chunk as $data) {
+                            $insertValues[] = "({$data['IDEMPRESA']}, {$data['IDRELOJ']}, '{$data['ID_EMPLEADO']}', '{$data['HORA_MARCA']}', 
+                            '{$data['FECHA_MARCA']}', '{$data['FECHA_CARGA']}', '.', '.', 0, '.', '{$data['TIPO_MARCA']}')";
+                        }
+                        $sqlInsert .= implode(', ', $insertValues);
+                        $rowsAffected = $connD->exec($sqlInsert);
+                    }
+
                     $connD->commit();
+
                     $json_final['message'] = "$rowsAffected registros insertados correctamente.";
                     $json_final['total_insert'] = $rowsAffected;
                 } catch (Exception $e) {
@@ -1123,14 +1130,13 @@ class ApiController
     public function getMarksClockHivision($fecha_inicio, $fecha_fin): array
     {
         try {
-            $db = new DB($this->databases); // Suponiendo que DB es tu clase para manejar la conexión a la base de datos
-            $connD = $db->getConnection('IVSM_PROD'); // Suponiendo que 'IVSM_PROD' es el nombre de tu conexión
+            $db = new DB($this->databases);
+            $connD = $db->getConnection('IVSM_PROD');
 
-            // Obtener las fechas de ayer y hoy
-            $fecha_inicio = $fecha_inicio ? $fecha_inicio : date('Y-m-d', strtotime('-1 day')); // Formato de la fecha para la consulta
-            $fecha_fin = $fecha_fin ? $fecha_fin : date('Y-m-d'); // Fecha de ayer
+            // $fecha_inicio = $fecha_inicio ? $fecha_inicio : date('Y-m-d', strtotime('2024-09-28'));
+            $fecha_inicio = $fecha_inicio ? $fecha_inicio : date('Y-m-d', strtotime('-1 day'));
+            $fecha_fin = $fecha_fin ? $fecha_fin : date('Y-m-d');
 
-            // Consulta SQL modificada para incluir el filtrado por AuthDate
             $query = 'SELECT *
                       FROM attlog a 
                       WHERE a.Direction IN ("ENTRADA", "SALIDA")
@@ -1139,19 +1145,17 @@ class ApiController
 
             $stmt = $connD->prepare($query);
 
-            // Bindear las fechas como parámetros
             $stmt->bindValue(':ayer', $fecha_inicio);
             $stmt->bindValue(':hoy', $fecha_fin);
 
             $stmt->execute();
             $horarios = $stmt->fetchAll(PDO::FETCH_OBJ);
 
-            // Cerramos la conexión
             $db = null;
 
             return $horarios;
         } catch (PDOException $e) {
-            error_log($e->getMessage());  // Registrar el mensaje de error en el log
+            error_log($e->getMessage());
             $error = ["message" => $e->getMessage()];
             return $error;
         }
