@@ -801,6 +801,7 @@ class ApiController
                 $connD->beginTransaction();
 
                 try {
+                    $rowsAffected = 0;
                     foreach ($chunkedData as $chunk) {
 
                         $sqlInsert = "INSERT INTO RRHH.dbo.[MAESTRO DE MARCAS] 
